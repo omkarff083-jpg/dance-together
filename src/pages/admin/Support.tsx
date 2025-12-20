@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, User, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { MessageCircle, Send, User, Clock, CheckCircle, XCircle, Zap, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +11,52 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+
+const quickReplies = [
+  {
+    category: 'Greeting',
+    replies: [
+      { label: 'Welcome', text: 'Hello! Welcome to LUXE support. How can I help you today?' },
+      { label: 'Thanks for waiting', text: 'Thank you for your patience. I am here to assist you now.' },
+    ]
+  },
+  {
+    category: 'Order Status',
+    replies: [
+      { label: 'Order confirmed', text: 'Your order has been confirmed and is being processed. You will receive a notification once it ships.' },
+      { label: 'Order shipped', text: 'Great news! Your order has been shipped. You can track it using the tracking link in your order details.' },
+      { label: 'Delivery timeline', text: 'Typically, orders are delivered within 3-5 business days. You can check the exact status in your order tracking page.' },
+    ]
+  },
+  {
+    category: 'Returns & Refunds',
+    replies: [
+      { label: 'Return policy', text: 'We offer 30-day returns for all unused items in original packaging. Would you like me to initiate a return for you?' },
+      { label: 'Refund processing', text: 'Your refund has been initiated and will be credited to your original payment method within 5-7 business days.' },
+      { label: 'Exchange request', text: 'I can help you with an exchange. Please let me know the item you would like to exchange and your preferred replacement.' },
+    ]
+  },
+  {
+    category: 'Payment',
+    replies: [
+      { label: 'Payment failed', text: 'It seems your payment did not go through. Please try again or use a different payment method. Let me know if you need assistance.' },
+      { label: 'Payment confirmation', text: 'Your payment has been successfully received. Thank you for your purchase!' },
+    ]
+  },
+  {
+    category: 'Closing',
+    replies: [
+      { label: 'Anything else?', text: 'Is there anything else I can help you with today?' },
+      { label: 'Thank you', text: 'Thank you for contacting LUXE support. Have a wonderful day!' },
+      { label: 'Follow up', text: 'Feel free to reach out if you have any more questions. We are always here to help!' },
+    ]
+  },
+];
 
 interface Message {
   id: string;
@@ -404,21 +450,67 @@ export default function AdminSupport() {
 
                 {/* Input */}
                 {selectedConversation.status === 'open' && (
-                  <form onSubmit={sendMessage} className="p-4 border-t">
-                    <div className="flex gap-2">
-                      <Input
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Type your reply..."
-                        disabled={sending}
-                        className="flex-1"
-                      />
-                      <Button type="submit" disabled={sending || !message.trim()}>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send
-                      </Button>
+                  <div className="p-4 border-t space-y-3">
+                    {/* Quick Replies */}
+                    <div className="flex items-center gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Zap className="h-4 w-4" />
+                            Quick Replies
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="start">
+                          <ScrollArea className="h-80">
+                            <div className="p-2">
+                              {quickReplies.map((category) => (
+                                <div key={category.category} className="mb-3">
+                                  <p className="text-xs font-semibold text-muted-foreground px-2 py-1">
+                                    {category.category}
+                                  </p>
+                                  <div className="space-y-1">
+                                    {category.replies.map((reply) => (
+                                      <button
+                                        key={reply.label}
+                                        onClick={() => setMessage(reply.text)}
+                                        className="w-full text-left px-2 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                                      >
+                                        <p className="font-medium">{reply.label}</p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {reply.text}
+                                        </p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+                      <span className="text-xs text-muted-foreground">
+                        Click to insert a quick reply
+                      </span>
                     </div>
-                  </form>
+                    
+                    {/* Message Input */}
+                    <form onSubmit={sendMessage}>
+                      <div className="flex gap-2">
+                        <Input
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          placeholder="Type your reply..."
+                          disabled={sending}
+                          className="flex-1"
+                        />
+                        <Button type="submit" disabled={sending || !message.trim()}>
+                          <Send className="h-4 w-4 mr-2" />
+                          Send
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
                 )}
               </>
             ) : (
