@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, ChevronRight } from 'lucide-react';
+import { Package, ChevronRight, Truck, Calendar } from 'lucide-react';
+import { format, addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ interface Order {
   status: string;
   payment_method: string | null;
   created_at: string;
+  updated_at: string;
   order_items: {
     id: string;
     product_name: string;
@@ -22,6 +24,25 @@ interface Order {
     price: number;
   }[];
 }
+
+const DELIVERY_ESTIMATES: Record<string, { min: number; max: number }> = {
+  pending: { min: 5, max: 7 },
+  awaiting_payment: { min: 5, max: 7 },
+  confirmed: { min: 4, max: 6 },
+  shipped: { min: 2, max: 4 },
+  delivered: { min: 0, max: 0 },
+  cancelled: { min: 0, max: 0 },
+};
+
+const getEstimatedDelivery = (order: Order) => {
+  if (order.status === 'delivered' || order.status === 'cancelled') return null;
+  const estimates = DELIVERY_ESTIMATES[order.status] || { min: 5, max: 7 };
+  const statusDate = new Date(order.updated_at);
+  return {
+    min: addDays(statusDate, estimates.min),
+    max: addDays(statusDate, estimates.max),
+  };
+};
 
 export default function Orders() {
   const { user } = useAuth();
@@ -46,6 +67,7 @@ export default function Orders() {
           status,
           payment_method,
           created_at,
+          updated_at,
           order_items(id, product_name, product_image, quantity, price)
         `)
         .eq('user_id', user!.id)
@@ -127,26 +149,51 @@ export default function Orders() {
         <h1 className="font-display text-3xl font-bold mb-8">My Orders</h1>
 
         <div className="space-y-4">
-          {orders.map((order) => (
-            <Card key={order.id} className="p-4 md:p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Order #{order.id.slice(0, 8).toUpperCase()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </p>
+          {orders.map((order) => {
+            const estimatedDelivery = getEstimatedDelivery(order);
+            
+            return (
+              <Card key={order.id} className="p-4 md:p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Order #{order.id.slice(0, 8).toUpperCase()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(order.created_at).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                    {getStatusBadge(order.status)}
+                    <span className="font-semibold">₹{order.total_amount.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {getStatusBadge(order.status)}
-                  <span className="font-semibold">₹{order.total_amount.toLocaleString()}</span>
-                </div>
-              </div>
+
+                {/* Estimated Delivery */}
+                {estimatedDelivery && (
+                  <div className="flex items-center gap-2 mb-4 p-3 bg-primary/5 rounded-lg">
+                    <Truck className="h-4 w-4 text-primary" />
+                    <span className="text-sm">
+                      <span className="text-muted-foreground">Estimated Delivery: </span>
+                      <span className="font-medium">
+                        {format(estimatedDelivery.min, 'dd MMM')} - {format(estimatedDelivery.max, 'dd MMM')}
+                      </span>
+                    </span>
+                  </div>
+                )}
+                
+                {order.status === 'delivered' && (
+                  <div className="flex items-center gap-2 mb-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                    <Package className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-600 font-medium">
+                      Delivered on {format(new Date(order.updated_at), 'dd MMM yyyy')}
+                    </span>
+                  </div>
+                )}
 
               <div className="flex items-center gap-4 overflow-x-auto pb-2">
                 {order.order_items.slice(0, 4).map((item) => (
@@ -179,7 +226,8 @@ export default function Orders() {
                 </Button>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
     </Layout>
