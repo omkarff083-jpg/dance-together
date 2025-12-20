@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, Heart, User, Menu, X, Search, LogOut, Settings, Package } from 'lucide-react';
+import { ShoppingBag, Heart, User, Menu, Search, LogOut, Settings, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   DropdownMenu,
@@ -11,13 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ProductSearch } from '@/components/ProductSearch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { Badge } from '@/components/ui/badge';
 
 export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
   const { totalItems } = useCart();
@@ -31,15 +30,6 @@ export function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
-      setIsSearchOpen(false);
-    }
-  };
 
   const handleLogout = async () => {
     await signOut();
@@ -136,25 +126,11 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           {/* Search */}
           {isSearchOpen ? (
-            <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in">
-              <Input
-                type="search"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-40 sm:w-64 rounded-full bg-background/90 backdrop-blur-sm border-border"
-                autoFocus
-              />
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setIsSearchOpen(false)}
-                className={`rounded-full ${textColor}`}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </form>
+            <ProductSearch 
+              textColor={textColor} 
+              onClose={() => setIsSearchOpen(false)}
+              isOpen={isSearchOpen}
+            />
           ) : (
             <Button 
               variant="ghost" 
