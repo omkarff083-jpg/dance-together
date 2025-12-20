@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { CustomerSupportChat } from "@/components/support/CustomerSupportChat";
 
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
@@ -22,6 +23,7 @@ import AdminProducts from "./pages/admin/Products";
 import AdminCategories from "./pages/admin/Categories";
 import AdminOrders from "./pages/admin/Orders";
 import AdminSettings from "./pages/admin/Settings";
+import AdminSupport from "./pages/admin/Support";
 
 const queryClient = new QueryClient();
 
@@ -49,9 +51,11 @@ const App = () => (
               <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/support" element={<AdminSupport />} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <CustomerSupportChat />
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
