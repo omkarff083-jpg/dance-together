@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, CreditCard, QrCode } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,13 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const addressSchema = z.object({
   fullName: z.string().min(2, 'Name is required'),
@@ -27,6 +34,12 @@ const addressSchema = z.object({
 
 type AddressFormData = z.infer<typeof addressSchema>;
 
+interface PaymentSettings {
+  razorpay_enabled: boolean;
+  upi_enabled: boolean;
+  upi_id: string | null;
+}
+
 declare global {
   interface Window {
     Razorpay: any;
@@ -38,8 +51,12 @@ export default function Checkout() {
   const { user } = useAuth();
   const { items, totalAmount, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('razorpay');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+  const [showUpiDialog, setShowUpiDialog] = useState(false);
+  const [upiCopied, setUpiCopied] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const form = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -71,13 +88,38 @@ export default function Checkout() {
     script.onload = () => setRazorpayLoaded(true);
     document.body.appendChild(script);
 
-    // Fetch user profile for pre-filling
+    // Fetch user profile and payment settings
     fetchProfile();
+    fetchPaymentSettings();
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, [user, items.length, navigate]);
+
+  const fetchPaymentSettings = async () => {
+    const { data } = await supabase
+      .from('payment_settings')
+      .select('razorpay_enabled, upi_enabled, upi_id')
+      .limit(1)
+      .maybeSingle();
+    
+    if (data) {
+      setPaymentSettings(data);
+      // Set default payment method based on what's enabled
+      if (data.razorpay_enabled) {
+        setPaymentMethod('razorpay');
+      } else if (data.upi_enabled && data.upi_id) {
+        setPaymentMethod('upi');
+      } else {
+        setPaymentMethod('cod');
+      }
+    } else {
+      setPaymentMethod('cod');
+    }
+  };
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -86,7 +128,7 @@ export default function Checkout() {
       .from('profiles')
       .select('full_name, phone, address')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (data) {
       if (data.full_name) form.setValue('fullName', data.full_name);
@@ -97,7 +139,7 @@ export default function Checkout() {
   const shipping = totalAmount >= 999 ? 0 : 99;
   const finalTotal = totalAmount + shipping;
 
-  const createOrder = async (paymentId?: string) => {
+  const createOrder = async (paymentId?: string, status: string = 'pending') => {
     const addressData = form.getValues();
     
     // Create order
@@ -106,7 +148,7 @@ export default function Checkout() {
       .insert({
         user_id: user!.id,
         total_amount: finalTotal,
-        status: paymentId ? 'confirmed' : 'pending',
+        status: status,
         payment_method: paymentMethod,
         payment_id: paymentId || null,
         shipping_address: {
@@ -181,7 +223,7 @@ export default function Checkout() {
             if (verifyError) throw verifyError;
 
             // Create order in database
-            await createOrder(response.razorpay_payment_id);
+            await createOrder(response.razorpay_payment_id, 'confirmed');
             await clearCart();
             
             toast.success('Payment successful!');
@@ -205,20 +247,52 @@ export default function Checkout() {
       razorpay.open();
     } catch (error) {
       console.error('Razorpay error:', error);
-      toast.error('Failed to initiate payment');
+      toast.error('Failed to initiate payment. Please check if Razorpay is configured in admin settings.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleUpiPayment = async () => {
+    setLoading(true);
+    try {
+      const order = await createOrder(undefined, 'awaiting_payment');
+      setPendingOrderId(order.id);
+      setShowUpiDialog(true);
+    } catch (error) {
+      console.error('Order error:', error);
+      toast.error('Failed to create order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyUpiId = () => {
+    if (paymentSettings?.upi_id) {
+      navigator.clipboard.writeText(paymentSettings.upi_id);
+      setUpiCopied(true);
+      toast.success('UPI ID copied!');
+      setTimeout(() => setUpiCopied(false), 2000);
+    }
+  };
+
+  const confirmUpiPayment = async () => {
+    await clearCart();
+    setShowUpiDialog(false);
+    toast.success('Order placed! We will confirm once payment is verified.');
+    navigate('/orders');
+  };
+
   const handleSubmit = async (data: AddressFormData) => {
     if (paymentMethod === 'razorpay') {
       await handleRazorpayPayment();
+    } else if (paymentMethod === 'upi') {
+      await handleUpiPayment();
     } else {
       // COD order
       setLoading(true);
       try {
-        await createOrder();
+        await createOrder(undefined, 'pending');
         await clearCart();
         toast.success('Order placed successfully!');
         navigate('/orders');
@@ -231,9 +305,18 @@ export default function Checkout() {
     }
   };
 
+  const generateUpiQR = () => {
+    if (!paymentSettings?.upi_id) return '';
+    const upiString = `upi://pay?pa=${paymentSettings.upi_id}&pn=LUXE&am=${finalTotal}&cu=INR`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
+  };
+
   if (!user || items.length === 0) {
     return null;
   }
+
+  const isRazorpayAvailable = paymentSettings?.razorpay_enabled;
+  const isUpiAvailable = paymentSettings?.upi_enabled && paymentSettings?.upi_id;
 
   return (
     <Layout>
@@ -304,32 +387,58 @@ export default function Checkout() {
                 <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
                 
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50">
-                    <RadioGroupItem value="razorpay" id="razorpay" />
-                    <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <CreditCard className="h-5 w-5 text-accent" />
-                        <div>
-                          <p className="font-medium">Pay Online (Razorpay)</p>
-                          <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking, Wallets</p>
+                  {/* Razorpay Option */}
+                  {isRazorpayAvailable && (
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50">
+                      <RadioGroupItem value="razorpay" id="razorpay" />
+                      <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <CreditCard className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium">Pay Online (Razorpay)</p>
+                            <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking, Wallets</p>
+                          </div>
                         </div>
-                      </div>
-                    </Label>
-                  </div>
+                      </Label>
+                    </div>
+                  )}
                   
-                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 mt-3">
+                  {/* UPI QR Option */}
+                  {isUpiAvailable && (
+                    <div className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 ${isRazorpayAvailable ? 'mt-3' : ''}`}>
+                      <RadioGroupItem value="upi" id="upi" />
+                      <Label htmlFor="upi" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <QrCode className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium">Pay via UPI QR</p>
+                            <p className="text-sm text-muted-foreground">Scan QR code with any UPI app</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
+                  
+                  {/* COD Option */}
+                  <div className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 ${(isRazorpayAvailable || isUpiAvailable) ? 'mt-3' : ''}`}>
                     <RadioGroupItem value="cod" id="cod" />
                     <Label htmlFor="cod" className="flex-1 cursor-pointer">
                       <div className="flex items-center gap-3">
-                        <QrCode className="h-5 w-5 text-accent" />
+                        <Banknote className="h-5 w-5 text-primary" />
                         <div>
                           <p className="font-medium">Cash on Delivery</p>
-                          <p className="text-sm text-muted-foreground">Pay when you receive</p>
+                          <p className="text-sm text-muted-foreground">Pay when you receive your order</p>
                         </div>
                       </div>
                     </Label>
                   </div>
                 </RadioGroup>
+
+                {!isRazorpayAvailable && !isUpiAvailable && (
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Only Cash on Delivery is available at the moment.
+                  </p>
+                )}
               </Card>
             </div>
 
@@ -381,19 +490,63 @@ export default function Checkout() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  disabled={loading}
+                  className="w-full"
+                  disabled={loading || !paymentMethod}
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : null}
-                  {paymentMethod === 'razorpay' ? 'Pay Now' : 'Place Order'}
+                  {paymentMethod === 'razorpay' ? 'Pay Now' : paymentMethod === 'upi' ? 'Generate QR' : 'Place Order'}
                 </Button>
               </Card>
             </div>
           </div>
         </form>
       </div>
+
+      {/* UPI Payment Dialog */}
+      <Dialog open={showUpiDialog} onOpenChange={setShowUpiDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pay via UPI</DialogTitle>
+            <DialogDescription>
+              Scan the QR code or use the UPI ID to pay ₹{finalTotal.toLocaleString()}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center space-y-4 py-4">
+            {/* QR Code */}
+            <div className="bg-white p-4 rounded-lg">
+              <img 
+                src={generateUpiQR()} 
+                alt="UPI QR Code" 
+                className="w-48 h-48"
+              />
+            </div>
+            
+            {/* UPI ID */}
+            <div className="flex items-center gap-2 bg-secondary p-3 rounded-lg w-full">
+              <span className="flex-1 font-mono text-sm">{paymentSettings?.upi_id}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={copyUpiId}
+              >
+                {upiCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            <p className="text-sm text-muted-foreground text-center">
+              After payment, click the button below to confirm your order
+            </p>
+
+            <Button onClick={confirmUpiPayment} className="w-full">
+              I've Made the Payment
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
