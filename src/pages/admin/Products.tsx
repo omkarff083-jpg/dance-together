@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -55,7 +56,7 @@ export default function AdminProducts() {
     sizes: '',
     colors: '',
     stock: '',
-    images: '',
+    images: [] as string[],
     featured: false,
     active: true,
   });
@@ -102,7 +103,7 @@ export default function AdminProducts() {
       sizes: '',
       colors: '',
       stock: '',
-      images: '',
+      images: [],
       featured: false,
       active: true,
     });
@@ -121,7 +122,7 @@ export default function AdminProducts() {
       sizes: product.sizes.join(', '),
       colors: product.colors.join(', '),
       stock: product.stock.toString(),
-      images: product.images.join('\n'),
+      images: product.images || [],
       featured: product.featured,
       active: product.active,
     });
@@ -146,7 +147,7 @@ export default function AdminProducts() {
         sizes: formData.sizes ? formData.sizes.split(',').map(s => s.trim()) : [],
         colors: formData.colors ? formData.colors.split(',').map(s => s.trim()) : [],
         stock: parseInt(formData.stock) || 0,
-        images: formData.images ? formData.images.split('\n').map(s => s.trim()).filter(Boolean) : [],
+        images: formData.images,
         featured: formData.featured,
         active: formData.active,
       };
@@ -304,12 +305,11 @@ export default function AdminProducts() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Image URLs (one per line)</Label>
-                  <Textarea
-                    value={formData.images}
-                    onChange={(e) => setFormData({ ...formData, images: e.target.value })}
-                    rows={3}
-                    placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+                  <Label>Product Images</Label>
+                  <ImageUpload
+                    images={formData.images}
+                    onImagesChange={(images) => setFormData({ ...formData, images })}
+                    maxImages={5}
                   />
                 </div>
 
