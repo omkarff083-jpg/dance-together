@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,13 +14,42 @@ serve(async (req) => {
   try {
     const { amount } = await req.json();
 
-    const RAZORPAY_KEY_ID = Deno.env.get('RAZORPAY_KEY_ID');
-    const RAZORPAY_KEY_SECRET = Deno.env.get('RAZORPAY_KEY_SECRET');
+    // Get credentials from database
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log('Fetching Razorpay credentials from database...');
+    
+    const { data: settings, error: settingsError } = await supabase
+      .from('payment_settings')
+      .select('razorpay_key_id, razorpay_key_secret, razorpay_enabled')
+      .limit(1)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.error('Error fetching payment settings:', settingsError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch payment settings' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!settings?.razorpay_enabled) {
+      console.error('Razorpay is not enabled');
+      return new Response(
+        JSON.stringify({ error: 'Razorpay payments are not enabled' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const RAZORPAY_KEY_ID = settings.razorpay_key_id;
+    const RAZORPAY_KEY_SECRET = settings.razorpay_key_secret;
 
     if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-      console.error('Razorpay credentials not configured');
+      console.error('Razorpay credentials not configured in database');
       return new Response(
-        JSON.stringify({ error: 'Payment system not configured' }),
+        JSON.stringify({ error: 'Razorpay credentials not configured. Please update in Admin Settings.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
