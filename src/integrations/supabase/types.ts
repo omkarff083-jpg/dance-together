@@ -171,6 +171,7 @@ export type Database = {
           id: string
           razorpay_enabled: boolean | null
           razorpay_key_id: string | null
+          razorpay_key_secret: string | null
           updated_at: string
           upi_enabled: boolean | null
           upi_id: string | null
@@ -179,6 +180,7 @@ export type Database = {
           id?: string
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
+          razorpay_key_secret?: string | null
           updated_at?: string
           upi_enabled?: boolean | null
           upi_id?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           id?: string
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
+          razorpay_key_secret?: string | null
           updated_at?: string
           upi_enabled?: boolean | null
           upi_id?: string | null
