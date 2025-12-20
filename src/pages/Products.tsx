@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { Layout } from '@/components/layout/Layout';
 import { ProductGrid } from '@/components/products/ProductGrid';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +19,7 @@ interface Product {
   price: number;
   sale_price: number | null;
   images: string[];
+  stock: number;
   category: { name: string } | null;
 }
 
@@ -33,6 +36,9 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('newest');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+  const [maxPrice, setMaxPrice] = useState(10000);
+  const [inStockOnly, setInStockOnly] = useState(false);
 
   const searchQuery = searchParams.get('search') || '';
   const categorySlug = searchParams.get('category') || '';
@@ -41,15 +47,31 @@ export default function Products() {
 
   useEffect(() => {
     fetchCategories();
+    fetchMaxPrice();
   }, []);
 
   useEffect(() => {
     fetchProducts();
-  }, [searchQuery, categorySlug, featured, onSale, selectedCategories, sortBy]);
+  }, [searchQuery, categorySlug, featured, onSale, selectedCategories, sortBy, priceRange, inStockOnly]);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('id, name, slug');
     if (data) setCategories(data);
+  };
+
+  const fetchMaxPrice = async () => {
+    const { data } = await supabase
+      .from('products')
+      .select('price')
+      .eq('active', true)
+      .order('price', { ascending: false })
+      .limit(1)
+      .single();
+    if (data) {
+      const max = Math.ceil(data.price / 100) * 100;
+      setMaxPrice(max);
+      setPriceRange([0, max]);
+    }
   };
 
   const fetchProducts = async () => {
@@ -57,7 +79,7 @@ export default function Products() {
     try {
       let query = supabase
         .from('products')
-        .select('id, name, slug, price, sale_price, images, category:categories(name)')
+        .select('id, name, slug, price, sale_price, images, stock, category:categories(name)')
         .eq('active', true);
 
       if (searchQuery) {
@@ -85,6 +107,14 @@ export default function Products() {
 
       if (onSale) {
         query = query.not('sale_price', 'is', null);
+      }
+
+      // Price range filter
+      query = query.gte('price', priceRange[0]).lte('price', priceRange[1]);
+
+      // In-stock filter
+      if (inStockOnly) {
+        query = query.gt('stock', 0);
       }
 
       switch (sortBy) {
@@ -121,10 +151,12 @@ export default function Products() {
 
   const clearFilters = () => {
     setSelectedCategories([]);
+    setPriceRange([0, maxPrice]);
+    setInStockOnly(false);
     setSearchParams({});
   };
 
-  const hasActiveFilters = selectedCategories.length > 0 || searchQuery || categorySlug || featured || onSale;
+  const hasActiveFilters = selectedCategories.length > 0 || searchQuery || categorySlug || featured || onSale || priceRange[0] > 0 || priceRange[1] < maxPrice || inStockOnly;
 
   return (
     <Layout>
@@ -154,6 +186,43 @@ export default function Products() {
                   <SheetTitle>Filters</SheetTitle>
                 </SheetHeader>
                 <div className="mt-6 space-y-6">
+                  {/* Price Range */}
+                  <div>
+                    <h3 className="font-semibold mb-4">Price Range</h3>
+                    <div className="space-y-4">
+                      <Slider
+                        value={priceRange}
+                        onValueChange={(value) => setPriceRange(value as [number, number])}
+                        min={0}
+                        max={maxPrice}
+                        step={100}
+                        className="w-full"
+                      />
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>₹{priceRange[0].toLocaleString()}</span>
+                        <span>₹{priceRange[1].toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* In Stock Toggle */}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="in-stock" className="font-semibold cursor-pointer">
+                        In Stock Only
+                      </Label>
+                      <Switch
+                        id="in-stock"
+                        checked={inStockOnly}
+                        onCheckedChange={setInStockOnly}
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Show only products that are available
+                    </p>
+                  </div>
+
+                  {/* Categories */}
                   <div>
                     <h3 className="font-semibold mb-4">Categories</h3>
                     <div className="space-y-3">
