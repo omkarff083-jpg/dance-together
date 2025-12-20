@@ -36,8 +36,15 @@ const DELIVERY_ESTIMATES: Record<string, { min: number; max: number }> = {
 
 const getEstimatedDelivery = (order: Order) => {
   if (order.status === 'delivered' || order.status === 'cancelled') return null;
+  
+  // Use updated_at if available, otherwise fall back to created_at
+  const dateStr = order.updated_at || order.created_at;
+  if (!dateStr) return null;
+  
+  const statusDate = new Date(dateStr);
+  if (isNaN(statusDate.getTime())) return null; // Invalid date check
+  
   const estimates = DELIVERY_ESTIMATES[order.status] || { min: 5, max: 7 };
-  const statusDate = new Date(order.updated_at);
   return {
     min: addDays(statusDate, estimates.min),
     max: addDays(statusDate, estimates.max),
@@ -186,7 +193,7 @@ export default function Orders() {
                   </div>
                 )}
                 
-                {order.status === 'delivered' && (
+                {order.status === 'delivered' && order.updated_at && (
                   <div className="flex items-center gap-2 mb-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                     <Package className="h-4 w-4 text-green-600" />
                     <span className="text-sm text-green-600 font-medium">
