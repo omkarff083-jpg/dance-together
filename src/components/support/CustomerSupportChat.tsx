@@ -194,6 +194,32 @@ export function CustomerSupportChat() {
     }
   };
 
+  const getAIReply = async (messageText: string) => {
+    if (!conversation || !user) return;
+    
+    try {
+      setAdminTyping(true);
+      
+      const { data, error } = await supabase.functions.invoke('support-ai-reply', {
+        body: {
+          message: messageText,
+          conversationId: conversation.id,
+          userId: user.id
+        }
+      });
+
+      if (error) {
+        console.error('AI reply error:', error);
+      }
+      
+      // Reply is stored by the edge function, realtime will pick it up
+    } catch (error) {
+      console.error('Error getting AI reply:', error);
+    } finally {
+      setAdminTyping(false);
+    }
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !user || !conversation) return;
@@ -211,6 +237,9 @@ export function CustomerSupportChat() {
       });
 
       if (error) throw error;
+      
+      // Trigger AI auto-reply after sending message
+      getAIReply(messageText);
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
