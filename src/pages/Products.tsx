@@ -21,6 +21,8 @@ interface Product {
   images: string[];
   stock: number;
   category: { name: string } | null;
+  avgRating?: number;
+  reviewCount?: number;
 }
 
 interface Category {
@@ -135,14 +137,48 @@ export default function Products() {
       const { data, error } = await query;
       if (error) throw error;
       
-      // Filter by discount percentage client-side (since it requires calculation)
       let filteredProducts = data as Product[] || [];
+      
+      // Fetch ratings for all products
+      const productIds = filteredProducts.map(p => p.id);
+      if (productIds.length > 0) {
+        const { data: reviews } = await supabase
+          .from('reviews')
+          .select('product_id, rating')
+          .in('product_id', productIds);
+        
+        if (reviews) {
+          const ratingsByProduct = reviews.reduce((acc, review) => {
+            if (!acc[review.product_id]) {
+              acc[review.product_id] = { total: 0, count: 0 };
+            }
+            acc[review.product_id].total += review.rating;
+            acc[review.product_id].count += 1;
+            return acc;
+          }, {} as Record<string, { total: number; count: number }>);
+          
+          filteredProducts = filteredProducts.map(product => ({
+            ...product,
+            avgRating: ratingsByProduct[product.id] 
+              ? ratingsByProduct[product.id].total / ratingsByProduct[product.id].count 
+              : 0,
+            reviewCount: ratingsByProduct[product.id]?.count || 0,
+          }));
+        }
+      }
+      
+      // Filter by discount percentage
       if (minDiscount > 0) {
         filteredProducts = filteredProducts.filter(product => {
           if (!product.sale_price) return false;
           const discount = Math.round(((product.price - product.sale_price) / product.price) * 100);
           return discount >= minDiscount;
         });
+      }
+      
+      // Sort by rating if selected
+      if (sortBy === 'rating') {
+        filteredProducts.sort((a, b) => (b.avgRating || 0) - (a.avgRating || 0));
       }
       
       setProducts(filteredProducts);
@@ -301,6 +337,7 @@ export default function Products() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="rating">Highest Rated</SelectItem>
                 <SelectItem value="price-low">Price: Low to High</SelectItem>
                 <SelectItem value="price-high">Price: High to Low</SelectItem>
                 <SelectItem value="name">Name</SelectItem>
