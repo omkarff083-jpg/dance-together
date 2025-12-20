@@ -1,68 +1,111 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Mail, MapPin, Phone } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="border-t bg-secondary/30">
-      <div className="container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-primary text-primary-foreground">
+      <div className="container py-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
-          <div className="space-y-4">
-            <Link to="/" className="font-display text-2xl font-bold">
+          <div className="lg:col-span-1">
+            <Link to="/" className="font-display text-3xl font-bold mb-6 block">
               LUXE
             </Link>
-            <p className="text-sm text-muted-foreground">
-              Premium fashion destination for the modern style-conscious individual.
+            <p className="text-primary-foreground/70 mb-6 leading-relaxed">
+              Discover premium fashion pieces designed for the modern individual. Quality meets style.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="text-muted-foreground hover:text-accent transition-colors">
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-accent transition-colors">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-accent transition-colors">
-                <Twitter className="h-5 w-5" />
-              </a>
+              {[Instagram, Facebook, Twitter].map((Icon, i) => (
+                <a
+                  key={i}
+                  href="#"
+                  className="h-10 w-10 rounded-full bg-primary-foreground/10 flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors duration-300"
+                >
+                  <Icon className="h-5 w-5" />
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* Shop */}
-          <div className="space-y-4">
-            <h4 className="font-semibold">Shop</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/products" className="hover:text-foreground transition-colors">All Products</Link></li>
-              <li><Link to="/categories" className="hover:text-foreground transition-colors">Categories</Link></li>
-              <li><Link to="/products?featured=true" className="hover:text-foreground transition-colors">Featured</Link></li>
-              <li><Link to="/products?sale=true" className="hover:text-foreground transition-colors">Sale</Link></li>
+          {/* Quick Links */}
+          <div>
+            <h4 className="font-display text-xl font-semibold mb-6">Quick Links</h4>
+            <ul className="space-y-4">
+              {[
+                { name: 'All Products', href: '/products' },
+                { name: 'Categories', href: '/categories' },
+                { name: 'Featured', href: '/products?featured=true' },
+                { name: 'Sale', href: '/products?sale=true' },
+              ].map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.href}
+                    className="text-primary-foreground/70 hover:text-accent transition-colors duration-300 link-underline"
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Account */}
-          <div className="space-y-4">
-            <h4 className="font-semibold">Account</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/profile" className="hover:text-foreground transition-colors">My Profile</Link></li>
-              <li><Link to="/orders" className="hover:text-foreground transition-colors">My Orders</Link></li>
-              <li><Link to="/wishlist" className="hover:text-foreground transition-colors">Wishlist</Link></li>
-              <li><Link to="/cart" className="hover:text-foreground transition-colors">Cart</Link></li>
+          <div>
+            <h4 className="font-display text-xl font-semibold mb-6">Account</h4>
+            <ul className="space-y-4">
+              {[
+                { name: 'My Orders', href: '/orders' },
+                { name: 'Wishlist', href: '/wishlist' },
+                { name: 'Cart', href: '/cart' },
+                { name: 'Sign In', href: '/auth' },
+              ].map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.href}
+                    className="text-primary-foreground/70 hover:text-accent transition-colors duration-300 link-underline"
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Support */}
-          <div className="space-y-4">
-            <h4 className="font-semibold">Support</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">Contact Us</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Shipping Info</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Returns</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">FAQ</a></li>
+          {/* Contact */}
+          <div>
+            <h4 className="font-display text-xl font-semibold mb-6">Contact</h4>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3 text-primary-foreground/70">
+                <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                <span>123 Fashion Street, Mumbai, India 400001</span>
+              </li>
+              <li className="flex items-center gap-3 text-primary-foreground/70">
+                <Phone className="h-5 w-5 flex-shrink-0" />
+                <span>+91 98765 43210</span>
+              </li>
+              <li className="flex items-center gap-3 text-primary-foreground/70">
+                <Mail className="h-5 w-5 flex-shrink-0" />
+                <span>hello@luxe.com</span>
+              </li>
             </ul>
           </div>
         </div>
+      </div>
 
-        <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} LUXE. All rights reserved.</p>
+      {/* Bottom Bar */}
+      <div className="border-t border-primary-foreground/10">
+        <div className="container py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-primary-foreground/50 text-sm">
+            © {new Date().getFullYear()} LUXE. All rights reserved.
+          </p>
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
+              Privacy Policy
+            </a>
+            <a href="#" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
+              Terms of Service
+            </a>
+          </div>
         </div>
       </div>
     </footer>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart, ShoppingBag, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,26 +68,30 @@ export function ProductCard({ product }: ProductCardProps) {
   const imageUrl = product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400';
 
   return (
-    <Card className="group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300">
+    <Card className="stagger-item group overflow-hidden border-0 bg-card shadow-elegant hover-lift rounded-xl">
       <Link to={`/product/${product.slug}`}>
-        <div className="relative aspect-[3/4] overflow-hidden bg-secondary">
+        <div className="relative aspect-[3/4] overflow-hidden bg-secondary/50">
           <img
             src={imageUrl}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover img-zoom"
           />
           
+          {/* Gradient overlay on hover */}
+          <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          
           {hasDiscount && (
-            <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground">
+            <Badge className="absolute top-4 left-4 bg-accent text-accent-foreground font-sans text-xs px-3 py-1 rounded-full shadow-lg">
               -{discountPercent}%
             </Badge>
           )}
 
-          <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Action buttons */}
+          <div className="absolute top-4 right-4 flex flex-col gap-2">
             <Button
               size="icon"
               variant="secondary"
-              className="h-9 w-9 rounded-full shadow-md"
+              className="h-10 w-10 rounded-full shadow-elegant bg-background/90 backdrop-blur-sm opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 hover:bg-accent hover:text-accent-foreground"
               onClick={handleAddToWishlist}
             >
               <Heart className="h-4 w-4" />
@@ -95,25 +99,36 @@ export function ProductCard({ product }: ProductCardProps) {
             <Button
               size="icon"
               variant="secondary"
-              className="h-9 w-9 rounded-full shadow-md"
+              className="h-10 w-10 rounded-full shadow-elegant bg-background/90 backdrop-blur-sm opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 delay-75 hover:bg-accent hover:text-accent-foreground"
               onClick={handleAddToCart}
             >
               <ShoppingBag className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Quick view button */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+            <Button 
+              variant="secondary" 
+              className="w-full bg-background/95 backdrop-blur-sm hover:bg-background shadow-lg rounded-full btn-shine"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Quick View
+            </Button>
+          </div>
         </div>
 
-        <CardContent className="p-4">
+        <CardContent className="p-5">
           {product.category && (
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-medium">
               {product.category.name}
             </p>
           )}
-          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-accent transition-colors">
+          <h3 className="font-display text-lg font-semibold line-clamp-2 mb-3 group-hover:text-accent transition-colors duration-300">
             {product.name}
           </h3>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">₹{displayPrice.toLocaleString()}</span>
+          <div className="flex items-center gap-3">
+            <span className="font-sans font-semibold text-lg">₹{displayPrice.toLocaleString()}</span>
             {hasDiscount && (
               <span className="text-sm text-muted-foreground line-through">
                 ₹{product.price.toLocaleString()}
