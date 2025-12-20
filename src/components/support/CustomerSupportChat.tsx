@@ -30,7 +30,10 @@ export function CustomerSupportChat() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [adminTyping, setAdminTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -42,7 +45,7 @@ export function CustomerSupportChat() {
     if (conversation) {
       fetchMessages();
       
-      // Set up realtime subscription
+      // Set up realtime subscription for messages
       const channel = supabase
         .channel(`support-messages-${conversation.id}`)
         .on(
@@ -61,6 +64,7 @@ export function CustomerSupportChat() {
             });
             
             if (newMessage.sender_type === 'admin') {
+              setAdminTyping(false);
               if (!isOpen || isMinimized) {
                 setUnreadCount((c) => c + 1);
               }
@@ -70,8 +74,23 @@ export function CustomerSupportChat() {
         )
         .subscribe();
 
+      // Set up typing indicator channel
+      const typingChannel = supabase
+        .channel(`typing-${conversation.id}`)
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          if (payload.payload.sender_type === 'admin') {
+            setAdminTyping(true);
+            // Clear typing after 3 seconds
+            setTimeout(() => setAdminTyping(false), 3000);
+          }
+        })
+        .subscribe();
+
+      typingChannelRef.current = typingChannel;
+
       return () => {
         supabase.removeChannel(channel);
+        supabase.removeChannel(typingChannel);
       };
     }
   }, [conversation, isOpen, isMinimized]);
@@ -152,6 +171,27 @@ export function CustomerSupportChat() {
       ...msg,
       sender_type: msg.sender_type as 'customer' | 'admin'
     })));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    
+    // Send typing indicator
+    if (conversation && typingChannelRef.current) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      typingChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { sender_type: 'customer', conversation_id: conversation.id }
+      });
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        typingTimeoutRef.current = null;
+      }, 1000);
+    }
   };
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -274,6 +314,16 @@ export function CustomerSupportChat() {
                         </p>
                       </div>
                     ))}
+                    {adminTyping && (
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <div className="flex gap-1">
+                          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <span>Support is typing...</span>
+                      </div>
+                    )}
                     <div ref={scrollRef} />
                   </div>
                 )}
@@ -284,7 +334,7 @@ export function CustomerSupportChat() {
                 <div className="flex gap-2">
                   <Input
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={handleInputChange}
                     placeholder="Type your message..."
                     disabled={sending || loading}
                     className="flex-1"

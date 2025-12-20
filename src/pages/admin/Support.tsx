@@ -86,7 +86,10 @@ export default function AdminSupport() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [customerTyping, setCustomerTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     fetchConversations();
@@ -136,6 +139,7 @@ export default function AdminSupport() {
             });
             
             if (newMessage.sender_type === 'customer') {
+              setCustomerTyping(false);
               toast.success('New message from customer!');
               markMessagesAsRead();
             }
@@ -143,8 +147,24 @@ export default function AdminSupport() {
         )
         .subscribe();
 
+      // Set up typing indicator channel
+      const typingChannel = supabase
+        .channel(`typing-${selectedConversation.id}`)
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          if (payload.payload.sender_type === 'customer') {
+            setCustomerTyping(true);
+            // Clear typing after 3 seconds
+            setTimeout(() => setCustomerTyping(false), 3000);
+          }
+        })
+        .subscribe();
+
+      typingChannelRef.current = typingChannel;
+
       return () => {
         supabase.removeChannel(messagesChannel);
+        supabase.removeChannel(typingChannel);
+        setCustomerTyping(false);
       };
     }
   }, [selectedConversation?.id]);
@@ -253,6 +273,27 @@ export default function AdminSupport() {
       setMessage(messageText);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    
+    // Send typing indicator
+    if (selectedConversation && typingChannelRef.current) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      typingChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { sender_type: 'admin', conversation_id: selectedConversation.id }
+      });
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        typingTimeoutRef.current = null;
+      }, 1000);
     }
   };
 
@@ -444,6 +485,16 @@ export default function AdminSupport() {
                         </p>
                       </div>
                     ))}
+                    {customerTyping && (
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <div className="flex gap-1">
+                          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <span>Customer is typing...</span>
+                      </div>
+                    )}
                     <div ref={scrollRef} />
                   </div>
                 </ScrollArea>
@@ -499,7 +550,7 @@ export default function AdminSupport() {
                       <div className="flex gap-2">
                         <Input
                           value={message}
-                          onChange={(e) => setMessage(e.target.value)}
+                          onChange={handleInputChange}
                           placeholder="Type your reply..."
                           disabled={sending}
                           className="flex-1"
