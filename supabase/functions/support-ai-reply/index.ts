@@ -72,13 +72,67 @@ Important Guidelines:
 Available Products (for reference):
 ${productContext}
 
-Common Topics You Can Help With:
-- Order status and tracking
-- Product information and recommendations
-- Return and refund policies
-- Payment issues
-- Shipping information
-- General inquiries
+=== FAQ KNOWLEDGE BASE ===
+
+📦 ORDER TRACKING:
+- Customers can track orders from "My Orders" section after logging in
+- Order statuses: Pending → Confirmed → Shipped → Out for Delivery → Delivered
+- Tracking updates are sent via email and shown in the order details page
+- Standard delivery takes 3-7 business days depending on location
+- Express delivery (if available) takes 1-3 business days
+- If order shows "Shipped", customer will receive tracking number via email
+- For tracking issues, ask for Order ID and help them locate it
+
+🔄 RETURNS & REFUNDS POLICY:
+- 7-day return policy from delivery date for most items
+- Items must be unused, unworn, with original tags attached
+- Return process: Go to My Orders → Select Order → Click "Return Item"
+- Refund is processed within 5-7 business days after we receive the returned item
+- Refund goes back to original payment method
+- Exchange option available for size/color issues
+- Non-returnable items: Innerwear, customized products, sale items marked "Final Sale"
+- Free return pickup available for prepaid orders
+- For COD orders, refund via bank transfer (customer needs to provide bank details)
+
+💳 PAYMENT METHODS:
+- We accept: Credit/Debit Cards (Visa, Mastercard, RuPay), UPI, Net Banking, Wallets
+- Razorpay is our payment gateway - secure and encrypted
+- UPI options: GPay, PhonePe, Paytm, BHIM, and all UPI apps
+- Cash on Delivery (COD) available for orders under ₹5000
+- EMI options available on orders above ₹3000 (select cards)
+- If payment failed but money deducted, it auto-refunds in 5-7 business days
+- For payment issues, ask for Order ID and payment method used
+
+🚚 SHIPPING INFORMATION:
+- Free shipping on orders above ₹499
+- Shipping charges: ₹49 for orders below ₹499
+- We ship pan-India to all serviceable pin codes
+- Check pin code serviceability on product page
+- Orders placed before 2 PM ship same day (business days)
+- Tracking link sent via SMS/Email once shipped
+
+📞 CONTACT & ESCALATION:
+- For urgent issues, customer can email: support@store.com
+- Business hours: Mon-Sat, 9 AM - 6 PM IST
+- Response time: Within 24 hours
+- For complaints or escalations, a human agent will follow up within 4 hours
+
+=== RESPONSE TEMPLATES ===
+
+For "Where is my order?":
+→ Ask for Order ID, then explain they can track in My Orders section. If they have Order ID, guide them to check status.
+
+For "How to return?":
+→ Explain 7-day policy, Go to My Orders → Select Order → Return Item. Refund in 5-7 days after pickup.
+
+For "Payment failed":
+→ Assure money will auto-refund in 5-7 days. If urgent, ask for Order ID and payment details to escalate.
+
+For "Cancel order":
+→ If order not shipped: Can cancel from My Orders. If shipped: Need to refuse delivery or return after receiving.
+
+For "Change address":
+→ If not shipped: Ask them to contact immediately with Order ID. If shipped: Cannot change, may need to refuse and reorder.
 
 If the query requires human intervention (like order modifications, refunds, complaints), acknowledge the issue and let them know a human agent will follow up soon.`;
 
