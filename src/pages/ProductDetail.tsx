@@ -431,7 +431,8 @@ export default function ProductDetail() {
     ? product.images
     : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'];
 
-  const canReview = user && (hasPurchased || userReview);
+  // Allow any logged-in user to review (not just purchasers)
+  const canReview = !!user;
 
   return (
     <Layout>
@@ -640,19 +641,13 @@ export default function ProductDetail() {
                   
                   {/* Write Review Button */}
                   {user ? (
-                    canReview ? (
-                      <Button 
-                        className="w-full" 
-                        onClick={() => setShowReviewForm(!showReviewForm)}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        {userReview ? 'Edit Your Review' : 'Write a Review'}
-                      </Button>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center">
-                        Purchase this product to leave a review
-                      </p>
-                    )
+                    <Button 
+                      className="w-full" 
+                      onClick={() => setShowReviewForm(!showReviewForm)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      {userReview ? 'Edit Your Review' : 'Write a Review'}
+                    </Button>
                   ) : (
                     <Button className="w-full" variant="outline" asChild>
                       <a href="/auth">Login to Review</a>
