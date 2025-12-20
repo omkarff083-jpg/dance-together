@@ -39,6 +39,7 @@ export default function Products() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [maxPrice, setMaxPrice] = useState(10000);
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [minDiscount, setMinDiscount] = useState(0);
 
   const searchQuery = searchParams.get('search') || '';
   const categorySlug = searchParams.get('category') || '';
@@ -52,7 +53,7 @@ export default function Products() {
 
   useEffect(() => {
     fetchProducts();
-  }, [searchQuery, categorySlug, featured, onSale, selectedCategories, sortBy, priceRange, inStockOnly]);
+  }, [searchQuery, categorySlug, featured, onSale, selectedCategories, sortBy, priceRange, inStockOnly, minDiscount]);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('id, name, slug');
@@ -133,7 +134,18 @@ export default function Products() {
 
       const { data, error } = await query;
       if (error) throw error;
-      setProducts(data as Product[] || []);
+      
+      // Filter by discount percentage client-side (since it requires calculation)
+      let filteredProducts = data as Product[] || [];
+      if (minDiscount > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+          if (!product.sale_price) return false;
+          const discount = Math.round(((product.price - product.sale_price) / product.price) * 100);
+          return discount >= minDiscount;
+        });
+      }
+      
+      setProducts(filteredProducts);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -153,10 +165,11 @@ export default function Products() {
     setSelectedCategories([]);
     setPriceRange([0, maxPrice]);
     setInStockOnly(false);
+    setMinDiscount(0);
     setSearchParams({});
   };
 
-  const hasActiveFilters = selectedCategories.length > 0 || searchQuery || categorySlug || featured || onSale || priceRange[0] > 0 || priceRange[1] < maxPrice || inStockOnly;
+  const hasActiveFilters = selectedCategories.length > 0 || searchQuery || categorySlug || featured || onSale || priceRange[0] > 0 || priceRange[1] < maxPrice || inStockOnly || minDiscount > 0;
 
   return (
     <Layout>
@@ -201,6 +214,34 @@ export default function Products() {
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>₹{priceRange[0].toLocaleString()}</span>
                         <span>₹{priceRange[1].toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Minimum Discount */}
+                  <div>
+                    <h3 className="font-semibold mb-4">Minimum Discount</h3>
+                    <div className="space-y-4">
+                      <Slider
+                        value={[minDiscount]}
+                        onValueChange={(value) => setMinDiscount(value[0])}
+                        min={0}
+                        max={70}
+                        step={5}
+                        className="w-full"
+                      />
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{minDiscount}% off or more</span>
+                        {minDiscount > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-0 text-xs"
+                            onClick={() => setMinDiscount(0)}
+                          >
+                            Clear
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
