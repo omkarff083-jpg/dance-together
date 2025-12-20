@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CheckCircle2, XCircle, Clock, CreditCard, Banknote, Smartphone, Eye, Copy, Check, Search } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, CreditCard, Banknote, Smartphone, Eye, Copy, Check, Search, MessageCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -39,10 +39,87 @@ export default function AdminOrders() {
     setLoading(false);
   };
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: string, order?: any) => {
     await supabase.from('orders').update({ status }).eq('id', id);
     toast.success('Status updated');
     fetchOrders();
+    
+    // Offer to send WhatsApp notification
+    if (order?.shipping_address?.phone) {
+      const shouldNotify = window.confirm('Send WhatsApp notification to customer?');
+      if (shouldNotify) {
+        sendWhatsAppNotification(order, status);
+      }
+    }
+  };
+
+  const getStatusMessage = (status: string): string => {
+    const messages: Record<string, string> = {
+      pending: 'Your order has been received and is pending confirmation.',
+      awaiting_payment: 'We are waiting for your payment confirmation.',
+      confirmed: 'Great news! Your order has been confirmed and is being processed.',
+      shipped: 'Your order has been shipped and is on the way!',
+      delivered: 'Your order has been delivered. Thank you for shopping with us!',
+      cancelled: 'Your order has been cancelled. If you have any questions, please contact us.',
+    };
+    return messages[status] || 'Your order status has been updated.';
+  };
+
+  const formatPhoneForWhatsApp = (phone: string): string => {
+    // Remove all non-digit characters
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // If starts with 0, remove it and add 91 (India)
+    if (cleaned.startsWith('0')) {
+      cleaned = '91' + cleaned.substring(1);
+    }
+    // If doesn't start with country code, add 91 (India)
+    else if (!cleaned.startsWith('91') && cleaned.length === 10) {
+      cleaned = '91' + cleaned;
+    }
+    
+    return cleaned;
+  };
+
+  const sendWhatsAppNotification = (order: any, status?: string) => {
+    const phone = order.shipping_address?.phone;
+    if (!phone) {
+      toast.error('Customer phone number not available');
+      return;
+    }
+
+    const formattedPhone = formatPhoneForWhatsApp(phone);
+    const orderStatus = status || order.status;
+    const orderId = order.id.slice(0, 8).toUpperCase();
+    const customerName = order.shipping_address?.fullName || 'Customer';
+    const totalAmount = order.total_amount?.toLocaleString() || '0';
+    const itemCount = order.order_items?.length || 0;
+    const statusMessage = getStatusMessage(orderStatus);
+
+    // Create WhatsApp message
+    const message = `🛍️ *LUXE Order Update*
+
+Hello ${customerName}!
+
+*Order ID:* #${orderId}
+*Status:* ${orderStatus.replace('_', ' ').toUpperCase()}
+
+${statusMessage}
+
+📦 *Order Details:*
+• Items: ${itemCount}
+• Total: ₹${totalAmount}
+
+${orderStatus === 'shipped' ? '🚚 Track your order in your account.' : ''}
+
+Thank you for shopping with LUXE!
+For any queries, reply to this message.`;
+
+    // Open WhatsApp with pre-filled message
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    
+    toast.success('Opening WhatsApp...');
   };
 
   const verifyUpiPayment = async (orderId: string) => {
@@ -197,11 +274,11 @@ export default function AdminOrders() {
                             )}
                           </div>
                           
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge className={statusColors[order.status] || statusColors.pending}>
                               {order.status.replace('_', ' ')}
                             </Badge>
-                            <Select value={order.status} onValueChange={(v) => updateStatus(order.id, v)}>
+                            <Select value={order.status} onValueChange={(v) => updateStatus(order.id, v, order)}>
                               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="pending">Pending</SelectItem>
@@ -212,6 +289,15 @@ export default function AdminOrders() {
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
                               </SelectContent>
                             </Select>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => sendWhatsAppNotification(order)}
+                              title="Send WhatsApp Update"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </Button>
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -397,9 +483,21 @@ export default function AdminOrders() {
                 </div>
               </div>
 
+              {/* WhatsApp Button */}
+              <div className="pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="w-full text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                  onClick={() => sendWhatsAppNotification(selectedOrder)}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Send WhatsApp Update
+                </Button>
+              </div>
+
               {/* Action Buttons for Pending UPI */}
               {selectedOrder.status === 'awaiting_payment' && selectedOrder.payment_method === 'upi' && (
-                <div className="flex gap-3 pt-4 border-t">
+                <div className="flex gap-3">
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700"
                     onClick={() => verifyUpiPayment(selectedOrder.id)}
