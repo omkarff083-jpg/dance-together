@@ -1,0 +1,207 @@
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Filter, SortAsc, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Layout } from '@/components/layout/Layout';
+import { ProductGrid } from '@/components/products/ProductGrid';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  sale_price: number | null;
+  images: string[];
+  category: { name: string } | null;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export default function Products() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState('newest');
+
+  const searchQuery = searchParams.get('search') || '';
+  const categorySlug = searchParams.get('category') || '';
+  const featured = searchParams.get('featured') === 'true';
+  const onSale = searchParams.get('sale') === 'true';
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [searchQuery, categorySlug, featured, onSale, selectedCategories, sortBy]);
+
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('id, name, slug');
+    if (data) setCategories(data);
+  };
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('products')
+        .select('id, name, slug, price, sale_price, images, category:categories(name)')
+        .eq('active', true);
+
+      if (searchQuery) {
+        query = query.ilike('name', `%${searchQuery}%`);
+      }
+
+      if (categorySlug) {
+        const { data: cat } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('slug', categorySlug)
+          .single();
+        if (cat) {
+          query = query.eq('category_id', cat.id);
+        }
+      }
+
+      if (selectedCategories.length > 0) {
+        query = query.in('category_id', selectedCategories);
+      }
+
+      if (featured) {
+        query = query.eq('featured', true);
+      }
+
+      if (onSale) {
+        query = query.not('sale_price', 'is', null);
+      }
+
+      switch (sortBy) {
+        case 'price-low':
+          query = query.order('price', { ascending: true });
+          break;
+        case 'price-high':
+          query = query.order('price', { ascending: false });
+          break;
+        case 'name':
+          query = query.order('name', { ascending: true });
+          break;
+        default:
+          query = query.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setProducts(data as Product[] || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const clearFilters = () => {
+    setSelectedCategories([]);
+    setSearchParams({});
+  };
+
+  const hasActiveFilters = selectedCategories.length > 0 || searchQuery || categorySlug || featured || onSale;
+
+  return (
+    <Layout>
+      <div className="container py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="font-display text-4xl font-bold mb-2">
+            {searchQuery ? `Search: "${searchQuery}"` : 'All Products'}
+          </h1>
+          <p className="text-muted-foreground">
+            {products.length} products found
+          </p>
+        </div>
+
+        {/* Filters Bar */}
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filters
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <SheetHeader>
+                  <SheetTitle>Filters</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-6">
+                  <div>
+                    <h3 className="font-semibold mb-4">Categories</h3>
+                    <div className="space-y-3">
+                      {categories.map((category) => (
+                        <div key={category.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={category.id}
+                            checked={selectedCategories.includes(category.id)}
+                            onCheckedChange={() => toggleCategory(category.id)}
+                          />
+                          <Label htmlFor={category.id} className="cursor-pointer">
+                            {category.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-2" />
+                Clear filters
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <SortAsc className="h-4 w-4 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="price-low">Price: Low to High</SelectItem>
+                <SelectItem value="price-high">Price: High to Low</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        <ProductGrid products={products} loading={loading} />
+      </div>
+    </Layout>
+  );
+}
