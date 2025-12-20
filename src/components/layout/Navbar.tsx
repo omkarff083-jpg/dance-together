@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Heart, User, Menu, X, Search, LogOut, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ShoppingBag, Heart, User, Menu, X, Search, LogOut, Settings, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -18,9 +18,19 @@ import { Badge } from '@/components/ui/badge';
 export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isScrolled, setIsScrolled] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
   const { totalItems } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,31 +52,48 @@ export function Navbar() {
     { name: 'Categories', href: '/categories' },
   ];
 
+  const isHomePage = location.pathname === '/';
+  const navbarBg = isScrolled || !isHomePage 
+    ? 'bg-background/95 backdrop-blur-xl shadow-elegant border-b border-border/50' 
+    : 'bg-transparent';
+  const textColor = isScrolled || !isHomePage ? 'text-foreground' : 'text-primary-foreground';
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${navbarBg}`}>
+      <div className="container flex h-20 items-center justify-between">
         {/* Mobile Menu */}
         <Sheet>
           <SheetTrigger asChild className="lg:hidden">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className={`rounded-full ${textColor}`}>
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80">
-            <nav className="flex flex-col gap-4 mt-8">
+          <SheetContent side="left" className="w-80 bg-background border-border">
+            <nav className="flex flex-col gap-2 mt-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   to={link.href}
-                  className="text-lg font-medium transition-colors hover:text-accent"
+                  className={`text-lg font-medium px-4 py-3 rounded-xl transition-colors hover:bg-secondary ${
+                    location.pathname === link.href ? 'bg-secondary text-accent' : ''
+                  }`}
                 >
                   {link.name}
                 </Link>
               ))}
+              {user && (
+                <Link
+                  to="/wishlist"
+                  className="text-lg font-medium px-4 py-3 rounded-xl transition-colors hover:bg-secondary flex items-center gap-3"
+                >
+                  <Heart className="h-5 w-5" />
+                  Wishlist
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   to="/admin"
-                  className="text-lg font-medium text-accent transition-colors hover:text-accent/80"
+                  className="text-lg font-medium px-4 py-3 rounded-xl transition-colors hover:bg-secondary text-accent"
                 >
                   Admin Panel
                 </Link>
@@ -77,48 +104,76 @@ export function Navbar() {
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <span className="font-display text-2xl font-bold tracking-tight">LUXE</span>
+          <span className={`font-display text-2xl md:text-3xl font-bold tracking-tight transition-colors ${textColor}`}>
+            LUXE
+          </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-10">
           {navLinks.map((link) => (
             <Link
               key={link.name}
               to={link.href}
-              className="text-sm font-medium transition-colors hover:text-accent"
+              className={`text-sm font-medium tracking-wide transition-colors link-underline ${textColor} hover:text-accent ${
+                location.pathname === link.href ? 'text-accent' : ''
+              }`}
             >
               {link.name}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={`text-sm font-medium tracking-wide transition-colors link-underline ${textColor} hover:text-accent`}
+            >
+              Admin
+            </Link>
+          )}
         </nav>
 
         {/* Actions */}
         <div className="flex items-center gap-2">
           {/* Search */}
           {isSearchOpen ? (
-            <form onSubmit={handleSearch} className="flex items-center gap-2">
+            <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in">
               <Input
                 type="search"
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-40 sm:w-64"
+                className="w-40 sm:w-64 rounded-full bg-background/90 backdrop-blur-sm border-border"
                 autoFocus
               />
-              <Button type="button" variant="ghost" size="icon" onClick={() => setIsSearchOpen(false)}>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsSearchOpen(false)}
+                className={`rounded-full ${textColor}`}
+              >
                 <X className="h-4 w-4" />
               </Button>
             </form>
           ) : (
-            <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsSearchOpen(true)}
+              className={`rounded-full ${textColor} hover:bg-foreground/10`}
+            >
               <Search className="h-5 w-5" />
             </Button>
           )}
 
           {/* Wishlist */}
           {user && (
-            <Button variant="ghost" size="icon" asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className={`rounded-full hidden md:flex ${textColor} hover:bg-foreground/10`}
+            >
               <Link to="/wishlist">
                 <Heart className="h-5 w-5" />
               </Link>
@@ -126,11 +181,16 @@ export function Navbar() {
           )}
 
           {/* Cart */}
-          <Button variant="ghost" size="icon" className="relative" asChild>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`rounded-full relative ${textColor} hover:bg-foreground/10`} 
+            asChild
+          >
             <Link to="/cart">
               <ShoppingBag className="h-5 w-5" />
               {totalItems > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-accent text-accent-foreground text-xs">
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-accent text-accent-foreground text-xs rounded-full animate-scale-in">
                   {totalItems}
                 </Badge>
               )}
@@ -141,20 +201,18 @@ export function Navbar() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className={`rounded-full ${textColor} hover:bg-foreground/10`}
+                >
                   <User className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center gap-2 cursor-pointer">
-                    <User className="h-4 w-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
                 <DropdownMenuItem asChild>
                   <Link to="/orders" className="flex items-center gap-2 cursor-pointer">
-                    <ShoppingBag className="h-4 w-4" />
+                    <Package className="h-4 w-4" />
                     My Orders
                   </Link>
                 </DropdownMenuItem>
@@ -170,14 +228,28 @@ export function Navbar() {
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer">
+                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer text-destructive">
                   <LogOut className="h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="ghost" size="icon" asChild>
+            <Button 
+              asChild 
+              className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-full px-6 ml-2 hidden md:flex"
+            >
+              <Link to="/auth">Sign In</Link>
+            </Button>
+          )}
+
+          {!user && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className={`rounded-full md:hidden ${textColor}`}
+            >
               <Link to="/auth">
                 <User className="h-5 w-5" />
               </Link>
