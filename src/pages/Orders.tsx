@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, ChevronRight, Truck, Calendar } from 'lucide-react';
+import { Package, ChevronRight, Truck, Bell } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Order {
   id: string;
@@ -51,6 +52,18 @@ const getEstimatedDelivery = (order: Order) => {
   };
 };
 
+const getStatusLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    pending: 'Order Placed',
+    awaiting_payment: 'Awaiting Payment',
+    confirmed: 'Confirmed',
+    shipped: 'Shipped',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+  };
+  return labels[status] || status;
+};
+
 export default function Orders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -59,6 +72,49 @@ export default function Orders() {
   useEffect(() => {
     if (user) {
       fetchOrders();
+      
+      // Set up realtime subscription for order updates
+      const channel = supabase
+        .channel('orders-list-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'orders',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Order updated:', payload);
+            const updatedOrder = payload.new as any;
+            
+            setOrders((prevOrders) => 
+              prevOrders.map((order) => 
+                order.id === updatedOrder.id 
+                  ? { ...order, ...updatedOrder }
+                  : order
+              )
+            );
+            
+            // Show toast notification for status changes
+            const statusLabel = getStatusLabel(updatedOrder.status);
+            toast.success(
+              `Order #${updatedOrder.id.slice(0, 8).toUpperCase()} is now ${statusLabel}`,
+              {
+                icon: <Bell className="h-4 w-4" />,
+                action: {
+                  label: 'Track',
+                  onClick: () => window.location.href = `/orders/${updatedOrder.id}`,
+                },
+              }
+            );
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } else {
       setLoading(false);
     }
@@ -91,16 +147,17 @@ export default function Orders() {
 
   const getStatusBadge = (status: string) => {
     const statusStyles: Record<string, string> = {
-      pending: 'bg-warning/20 text-warning-foreground border-warning',
-      confirmed: 'bg-accent/20 text-accent border-accent',
-      shipped: 'bg-blue-100 text-blue-800 border-blue-300',
-      delivered: 'bg-success/20 text-success border-success',
-      cancelled: 'bg-destructive/20 text-destructive border-destructive',
+      pending: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400',
+      awaiting_payment: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400',
+      confirmed: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400',
+      shipped: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400',
+      delivered: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400',
+      cancelled: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400',
     };
 
     return (
       <Badge variant="outline" className={statusStyles[status] || ''}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {getStatusLabel(status)}
       </Badge>
     );
   };
