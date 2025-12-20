@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Search, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Loader2, CheckSquare, Square, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +47,9 @@ export default function AdminProducts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -192,9 +197,103 @@ export default function AdminProducts() {
     }
   };
 
+  // Bulk selection handlers
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredProducts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Bulk actions
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    setBulkActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .in('id', Array.from(selectedIds));
+
+      if (error) throw error;
+      toast.success(`${selectedIds.size} products deleted`);
+      clearSelection();
+      fetchProducts();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      toast.error('Failed to delete products');
+    } finally {
+      setBulkActionLoading(false);
+      setShowBulkDeleteDialog(false);
+    }
+  };
+
+  const handleBulkStatusChange = async (active: boolean) => {
+    if (selectedIds.size === 0) return;
+
+    setBulkActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ active })
+        .in('id', Array.from(selectedIds));
+
+      if (error) throw error;
+      toast.success(`${selectedIds.size} products ${active ? 'activated' : 'deactivated'}`);
+      clearSelection();
+      fetchProducts();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update products');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkFeaturedChange = async (featured: boolean) => {
+    if (selectedIds.size === 0) return;
+
+    setBulkActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ featured })
+        .in('id', Array.from(selectedIds));
+
+      if (error) throw error;
+      toast.success(`${selectedIds.size} products ${featured ? 'featured' : 'unfeatured'}`);
+      clearSelection();
+      fetchProducts();
+    } catch (error) {
+      console.error('Error updating featured:', error);
+      toast.error('Failed to update products');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const allSelected = filteredProducts.length > 0 && selectedIds.size === filteredProducts.length;
+  const someSelected = selectedIds.size > 0;
 
   return (
     <AdminLayout>
@@ -339,16 +438,83 @@ export default function AdminProducts() {
           </Dialog>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search and Bulk Actions Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="relative max-w-sm w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Bulk Actions */}
+          {someSelected && (
+            <div className="flex items-center gap-2 animate-fade-in">
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size} selected
+              </span>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={bulkActionLoading}>
+                    {bulkActionLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <ToggleRight className="h-4 w-4 mr-2" />
+                    )}
+                    Bulk Actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleBulkStatusChange(true)}>
+                    <ToggleRight className="h-4 w-4 mr-2" />
+                    Activate All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkStatusChange(false)}>
+                    <ToggleLeft className="h-4 w-4 mr-2" />
+                    Deactivate All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkFeaturedChange(true)}>
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Mark as Featured
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkFeaturedChange(false)}>
+                    <Square className="h-4 w-4 mr-2" />
+                    Remove Featured
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setShowBulkDeleteDialog(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Selected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Select All Checkbox */}
+        {filteredProducts.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={toggleSelectAll}
+              id="select-all"
+            />
+            <Label htmlFor="select-all" className="text-sm cursor-pointer">
+              Select all ({filteredProducts.length})
+            </Label>
+          </div>
+        )}
 
         {/* Products List */}
         {loading ? (
@@ -364,8 +530,16 @@ export default function AdminProducts() {
         ) : (
           <div className="space-y-4">
             {filteredProducts.map((product) => (
-              <Card key={product.id} className="p-4">
+              <Card 
+                key={product.id} 
+                className={`p-4 transition-colors ${selectedIds.has(product.id) ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+              >
                 <div className="flex items-center gap-4">
+                  <Checkbox
+                    checked={selectedIds.has(product.id)}
+                    onCheckedChange={() => toggleSelect(product.id)}
+                  />
+
                   <div className="w-16 h-16 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
                     <img
                       src={product.images[0] || 'https://via.placeholder.com/64'}
@@ -424,6 +598,25 @@ export default function AdminProducts() {
           </div>
         )}
       </div>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} Products?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedIds.size} selected products. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive">
+              {bulkActionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
