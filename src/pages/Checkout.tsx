@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 
 const addressSchema = z.object({
   fullName: z.string().min(2, 'Name is required'),
@@ -59,6 +65,8 @@ export default function Checkout() {
   const [upiCopied, setUpiCopied] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
+  const [utrNumber, setUtrNumber] = useState('');
+  const [upiPaymentTab, setUpiPaymentTab] = useState<'app' | 'qr' | 'utr'>('app');
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
 
@@ -303,11 +311,49 @@ export default function Checkout() {
     }
   };
 
-  const confirmUpiPayment = async () => {
+  const confirmUpiPayment = async (withUtr?: boolean) => {
+    if (withUtr && pendingOrderId && utrNumber.trim()) {
+      // Update order with UTR number
+      await supabase
+        .from('orders')
+        .update({ payment_id: `UTR:${utrNumber.trim()}` })
+        .eq('id', pendingOrderId);
+    }
     await clearCheckoutItems();
     setShowUpiDialog(false);
+    setUtrNumber('');
     toast.success('Order placed! We will confirm once payment is verified.');
     navigate('/orders');
+  };
+
+  const generateUpiDeepLink = (app?: string) => {
+    if (!paymentSettings?.upi_id) return '';
+    const baseUrl = `upi://pay?pa=${encodeURIComponent(paymentSettings.upi_id)}&pn=LUXE&am=${finalTotal}&cu=INR&tn=Order%20Payment`;
+    return baseUrl;
+  };
+
+  const openUpiApp = (app: string) => {
+    const upiLink = generateUpiDeepLink();
+    
+    // Different deep link schemes for popular UPI apps
+    const appSchemes: { [key: string]: string } = {
+      gpay: `gpay://upi/${upiLink.replace('upi://', '')}`,
+      phonepe: `phonepe://${upiLink.replace('upi://', '')}`,
+      paytm: `paytmmp://${upiLink.replace('upi://', '')}`,
+      generic: upiLink,
+    };
+
+    const link = appSchemes[app] || upiLink;
+    
+    // Create a temporary link and click it
+    const a = document.createElement('a');
+    a.href = link;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    toast.info('Opening payment app...');
   };
 
   const handleSubmit = async (data: AddressFormData) => {
@@ -430,16 +476,16 @@ export default function Checkout() {
                     </div>
                   )}
                   
-                  {/* UPI QR Option */}
+                  {/* UPI Option */}
                   {isUpiAvailable && (
                     <div className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 ${isRazorpayAvailable ? 'mt-3' : ''}`}>
                       <RadioGroupItem value="upi" id="upi" />
                       <Label htmlFor="upi" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-3">
-                          <QrCode className="h-5 w-5 text-primary" />
+                          <Smartphone className="h-5 w-5 text-primary" />
                           <div>
-                            <p className="font-medium">Pay via UPI QR</p>
-                            <p className="text-sm text-muted-foreground">Scan QR code with any UPI app</p>
+                            <p className="font-medium">Pay via UPI</p>
+                            <p className="text-sm text-muted-foreground">App redirect, QR code, or enter UTR</p>
                           </div>
                         </div>
                       </Label>
@@ -537,45 +583,159 @@ export default function Checkout() {
 
       {/* UPI Payment Dialog */}
       <Dialog open={showUpiDialog} onOpenChange={setShowUpiDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Pay via UPI</DialogTitle>
             <DialogDescription>
-              Scan the QR code or use the UPI ID to pay ₹{finalTotal.toLocaleString()}
+              Pay ₹{finalTotal.toLocaleString()} using your preferred method
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex flex-col items-center space-y-4 py-4">
-            {/* QR Code */}
-            <div className="bg-white p-4 rounded-lg">
-              <img 
-                src={generateUpiQR()} 
-                alt="UPI QR Code" 
-                className="w-48 h-48"
-              />
-            </div>
-            
-            {/* UPI ID */}
-            <div className="flex items-center gap-2 bg-secondary p-3 rounded-lg w-full">
-              <span className="flex-1 font-mono text-sm">{paymentSettings?.upi_id}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={copyUpiId}
-              >
-                {upiCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
+          <Tabs value={upiPaymentTab} onValueChange={(v) => setUpiPaymentTab(v as 'app' | 'qr' | 'utr')} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="app" className="flex items-center gap-1">
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">App</span>
+              </TabsTrigger>
+              <TabsTrigger value="qr" className="flex items-center gap-1">
+                <QrCode className="h-4 w-4" />
+                <span className="hidden sm:inline">QR</span>
+              </TabsTrigger>
+              <TabsTrigger value="utr" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">UTR</span>
+              </TabsTrigger>
+            </TabsList>
 
-            <p className="text-sm text-muted-foreground text-center">
-              After payment, click the button below to confirm your order
-            </p>
+            {/* App Redirect Tab */}
+            <TabsContent value="app" className="space-y-4 mt-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Click on your UPI app to pay directly
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col items-center justify-center gap-1"
+                  onClick={() => openUpiApp('gpay')}
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-green-500 flex items-center justify-center text-white font-bold text-xs">
+                    G
+                  </div>
+                  <span className="text-xs">Google Pay</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col items-center justify-center gap-1"
+                  onClick={() => openUpiApp('phonepe')}
+                >
+                  <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xs">
+                    P
+                  </div>
+                  <span className="text-xs">PhonePe</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col items-center justify-center gap-1"
+                  onClick={() => openUpiApp('paytm')}
+                >
+                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+                    Pt
+                  </div>
+                  <span className="text-xs">Paytm</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col items-center justify-center gap-1"
+                  onClick={() => openUpiApp('generic')}
+                >
+                  <ExternalLink className="w-6 h-6" />
+                  <span className="text-xs">Other App</span>
+                </Button>
+              </div>
 
-            <Button onClick={confirmUpiPayment} className="w-full">
-              I've Made the Payment
-            </Button>
-          </div>
+              <div className="pt-2">
+                <Button onClick={() => confirmUpiPayment()} className="w-full">
+                  I've Made the Payment
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* QR Code Tab */}
+            <TabsContent value="qr" className="space-y-4 mt-4">
+              <div className="flex flex-col items-center space-y-4">
+                {/* QR Code */}
+                <div className="bg-white p-4 rounded-lg shadow-sm border">
+                  <img 
+                    src={generateUpiQR()} 
+                    alt="UPI QR Code" 
+                    className="w-48 h-48"
+                  />
+                </div>
+                
+                {/* UPI ID */}
+                <div className="flex items-center gap-2 bg-secondary p-3 rounded-lg w-full">
+                  <span className="flex-1 font-mono text-sm">{paymentSettings?.upi_id}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyUpiId}
+                  >
+                    {upiCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+
+                <p className="text-sm text-muted-foreground text-center">
+                  Scan QR code with any UPI app to pay
+                </p>
+
+                <Button onClick={() => confirmUpiPayment()} className="w-full">
+                  I've Made the Payment
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* UTR Entry Tab */}
+            <TabsContent value="utr" className="space-y-4 mt-4">
+              <div className="space-y-4">
+                <div className="bg-secondary/50 p-4 rounded-lg space-y-2">
+                  <p className="text-sm font-medium">Steps to pay:</p>
+                  <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                    <li>Open your UPI app (GPay, PhonePe, Paytm, etc.)</li>
+                    <li>Pay ₹{finalTotal.toLocaleString()} to UPI ID: <span className="font-mono font-medium text-foreground">{paymentSettings?.upi_id}</span></li>
+                    <li>Copy the UTR/Transaction Reference number</li>
+                    <li>Paste it below and confirm</li>
+                  </ol>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="utr">UTR / Transaction Reference Number</Label>
+                  <Input
+                    id="utr"
+                    placeholder="Enter 12-digit UTR number"
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value)}
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You can find this in your UPI app's transaction history
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={() => confirmUpiPayment(true)} 
+                  className="w-full"
+                  disabled={!utrNumber.trim()}
+                >
+                  Confirm Payment with UTR
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </Layout>
