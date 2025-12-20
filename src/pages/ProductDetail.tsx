@@ -318,6 +318,51 @@ export default function ProductDetail() {
     await addToCart(product.id, quantity, selectedSize, selectedColor);
   };
 
+  const handleBuyNow = async () => {
+    if (!product) return;
+    
+    if (!user) {
+      toast.error('Please login to continue');
+      navigate('/auth');
+      return;
+    }
+    
+    if (product.sizes.length > 0 && !selectedSize) {
+      toast.error('Please select a size');
+      return;
+    }
+    if (product.colors.length > 0 && !selectedColor) {
+      toast.error('Please select a color');
+      return;
+    }
+
+    // Set buy now item and navigate to checkout
+    const { setBuyNowItem } = await import('@/contexts/CartContext').then(m => {
+      // We need to access the context properly
+      return { setBuyNowItem: null };
+    });
+    
+    // Use the cart context's setBuyNowItem
+    const buyNowData = {
+      product_id: product.id,
+      quantity,
+      size: selectedSize || null,
+      color: selectedColor || null,
+      product: {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        sale_price: product.sale_price,
+        images: product.images,
+        stock: product.stock,
+      },
+    };
+    
+    // Store in sessionStorage for checkout to pick up
+    sessionStorage.setItem('buyNowItem', JSON.stringify(buyNowData));
+    navigate('/checkout?mode=buynow');
+  };
+
   const handleAddToWishlist = async () => {
     if (!user) {
       toast.error('Please login to add to wishlist');
@@ -515,18 +560,29 @@ export default function ProductDetail() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-4">
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleAddToCart}
+                  disabled={product.stock === 0}
+                >
+                  <ShoppingBag className="h-5 w-5 mr-2" />
+                  {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                </Button>
+                <Button size="lg" variant="outline" onClick={handleAddToWishlist}>
+                  <Heart className="h-5 w-5" />
+                </Button>
+              </div>
               <Button
                 size="lg"
-                className="flex-1"
-                onClick={handleAddToCart}
+                variant="secondary"
+                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={handleBuyNow}
                 disabled={product.stock === 0}
               >
-                <ShoppingBag className="h-5 w-5 mr-2" />
-                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-              </Button>
-              <Button size="lg" variant="outline" onClick={handleAddToWishlist}>
-                <Heart className="h-5 w-5" />
+                Buy Now
               </Button>
             </div>
 

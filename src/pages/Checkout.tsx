@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Layout } from '@/components/layout/Layout';
-import { useCart } from '@/contexts/CartContext';
+import { useCart, BuyNowItem } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -48,6 +48,7 @@ declare global {
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { items, totalAmount, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
@@ -57,6 +58,9 @@ export default function Checkout() {
   const [showUpiDialog, setShowUpiDialog] = useState(false);
   const [upiCopied, setUpiCopied] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
+
+  const isBuyNowMode = searchParams.get('mode') === 'buynow';
 
   const form = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -76,7 +80,16 @@ export default function Checkout() {
       return;
     }
 
-    if (items.length === 0) {
+    // Check for Buy Now mode
+    if (isBuyNowMode) {
+      const storedItem = sessionStorage.getItem('buyNowItem');
+      if (storedItem) {
+        setBuyNowItem(JSON.parse(storedItem));
+      } else {
+        navigate('/products');
+        return;
+      }
+    } else if (items.length === 0) {
       navigate('/cart');
       return;
     }
@@ -97,7 +110,7 @@ export default function Checkout() {
         document.body.removeChild(script);
       }
     };
-  }, [user, items.length, navigate]);
+  }, [user, items.length, navigate, isBuyNowMode]);
 
   const fetchPaymentSettings = async () => {
     const { data } = await supabase
@@ -136,8 +149,13 @@ export default function Checkout() {
     }
   };
 
-  const shipping = totalAmount >= 999 ? 0 : 99;
-  const finalTotal = totalAmount + shipping;
+  // Calculate totals based on mode
+  const checkoutItems = isBuyNowMode && buyNowItem ? [buyNowItem] : items;
+  const checkoutTotal = isBuyNowMode && buyNowItem
+    ? (buyNowItem.product.sale_price || buyNowItem.product.price) * buyNowItem.quantity
+    : totalAmount;
+  const shipping = checkoutTotal >= 999 ? 0 : 99;
+  const finalTotal = checkoutTotal + shipping;
 
   const createOrder = async (paymentId?: string, status: string = 'pending') => {
     const addressData = form.getValues();
@@ -166,7 +184,7 @@ export default function Checkout() {
     if (orderError) throw orderError;
 
     // Create order items
-    const orderItems = items.map(item => ({
+    const orderItems = checkoutItems.map(item => ({
       order_id: order.id,
       product_id: item.product_id,
       product_name: item.product?.name || 'Unknown',
@@ -184,6 +202,15 @@ export default function Checkout() {
     if (itemsError) throw itemsError;
 
     return order;
+  };
+
+  const clearCheckoutItems = async () => {
+    if (isBuyNowMode) {
+      sessionStorage.removeItem('buyNowItem');
+      setBuyNowItem(null);
+    } else {
+      await clearCart();
+    }
   };
 
   const handleRazorpayPayment = async () => {
@@ -224,7 +251,7 @@ export default function Checkout() {
 
             // Create order in database
             await createOrder(response.razorpay_payment_id, 'confirmed');
-            await clearCart();
+            await clearCheckoutItems();
             
             toast.success('Payment successful!');
             navigate('/orders');
@@ -277,7 +304,7 @@ export default function Checkout() {
   };
 
   const confirmUpiPayment = async () => {
-    await clearCart();
+    await clearCheckoutItems();
     setShowUpiDialog(false);
     toast.success('Order placed! We will confirm once payment is verified.');
     navigate('/orders');
@@ -293,7 +320,7 @@ export default function Checkout() {
       setLoading(true);
       try {
         await createOrder(undefined, 'pending');
-        await clearCart();
+        await clearCheckoutItems();
         toast.success('Order placed successfully!');
         navigate('/orders');
       } catch (error) {
@@ -311,7 +338,7 @@ export default function Checkout() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
   };
 
-  if (!user || items.length === 0) {
+  if (!user || (!isBuyNowMode && items.length === 0) || (isBuyNowMode && !buyNowItem)) {
     return null;
   }
 
@@ -448,8 +475,8 @@ export default function Checkout() {
                 <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
                 
                 <div className="space-y-3 max-h-48 overflow-y-auto">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex gap-3">
+                  {checkoutItems.map((item, index) => (
+                    <div key={isBuyNowMode ? `buynow-${index}` : (item as any).id} className="flex gap-3">
                       <div className="w-12 h-12 rounded bg-secondary overflow-hidden flex-shrink-0">
                         <img
                           src={item.product?.images?.[0] || 'https://via.placeholder.com/48'}
@@ -459,7 +486,11 @@ export default function Checkout() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.product?.name}</p>
-                        <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Qty: {item.quantity}
+                          {item.size && ` • Size: ${item.size}`}
+                          {item.color && ` • ${item.color}`}
+                        </p>
                       </div>
                       <p className="text-sm font-medium">
                         ₹{((item.product?.sale_price || item.product?.price || 0) * item.quantity).toLocaleString()}
@@ -473,7 +504,7 @@ export default function Checkout() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>₹{totalAmount.toLocaleString()}</span>
+                    <span>₹{checkoutTotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>

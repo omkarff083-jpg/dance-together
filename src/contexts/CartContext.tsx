@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -19,6 +20,21 @@ interface CartItem {
   };
 }
 
+export interface BuyNowItem {
+  product_id: string;
+  quantity: number;
+  size: string | null;
+  color: string | null;
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    sale_price: number | null;
+    images: string[];
+    stock: number;
+  };
+}
+
 interface CartContextType {
   items: CartItem[];
   loading: boolean;
@@ -28,6 +44,9 @@ interface CartContextType {
   clearCart: () => Promise<void>;
   totalItems: number;
   totalAmount: number;
+  buyNowItem: BuyNowItem | null;
+  setBuyNowItem: (item: BuyNowItem | null) => void;
+  clearBuyNow: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -36,6 +55,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -176,6 +196,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const clearBuyNow = () => {
+    setBuyNowItem(null);
+  };
+
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   
   const totalAmount = items.reduce((sum, item) => {
@@ -192,7 +216,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeFromCart,
       clearCart,
       totalItems,
-      totalAmount
+      totalAmount,
+      buyNowItem,
+      setBuyNowItem,
+      clearBuyNow
     }}>
       {children}
     </CartContext.Provider>
