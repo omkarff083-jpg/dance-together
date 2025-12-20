@@ -171,9 +171,11 @@ export default function Orders() {
                 <p className="text-sm text-muted-foreground">
                   {order.order_items.length} item{order.order_items.length > 1 ? 's' : ''}
                 </p>
-                <Button variant="ghost" size="sm">
-                  View Details
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to={`/orders/${order.id}`}>
+                    Track Order
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Link>
                 </Button>
               </div>
             </Card>
