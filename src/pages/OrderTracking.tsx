@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { format, addDays, differenceInDays, isAfter } from 'date-fns';
 import { 
   Package, 
   Truck, 
@@ -11,12 +12,15 @@ import {
   ArrowLeft,
   Copy,
   Check,
-  XCircle
+  XCircle,
+  Calendar,
+  Timer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,11 +58,75 @@ interface Order {
 }
 
 const ORDER_STATUSES = [
-  { key: 'pending', label: 'Order Placed', icon: Clock },
-  { key: 'confirmed', label: 'Confirmed', icon: CheckCircle2 },
-  { key: 'shipped', label: 'Shipped', icon: Truck },
-  { key: 'delivered', label: 'Delivered', icon: Package },
+  { key: 'pending', label: 'Order Placed', icon: Clock, daysToAdd: 0 },
+  { key: 'confirmed', label: 'Confirmed', icon: CheckCircle2, daysToAdd: 1 },
+  { key: 'shipped', label: 'Shipped', icon: Truck, daysToAdd: 3 },
+  { key: 'delivered', label: 'Delivered', icon: Package, daysToAdd: 5 },
 ];
+
+// Delivery time estimates based on status
+const DELIVERY_ESTIMATES = {
+  pending: { min: 5, max: 7 },
+  awaiting_payment: { min: 5, max: 7 },
+  confirmed: { min: 4, max: 6 },
+  shipped: { min: 2, max: 4 },
+  delivered: { min: 0, max: 0 },
+  cancelled: { min: 0, max: 0 },
+};
+
+const calculateDeliveryInfo = (order: Order) => {
+  const orderDate = new Date(order.created_at);
+  const today = new Date();
+  
+  if (order.status === 'delivered') {
+    return {
+      estimatedDate: null,
+      dateRange: null,
+      daysRemaining: 0,
+      progress: 100,
+      isDelivered: true,
+      deliveredOn: new Date(order.updated_at),
+    };
+  }
+  
+  if (order.status === 'cancelled') {
+    return {
+      estimatedDate: null,
+      dateRange: null,
+      daysRemaining: 0,
+      progress: 0,
+      isDelivered: false,
+      isCancelled: true,
+    };
+  }
+
+  const estimates = DELIVERY_ESTIMATES[order.status as keyof typeof DELIVERY_ESTIMATES] || { min: 5, max: 7 };
+  
+  // Calculate based on when order was last updated (status changed)
+  const statusDate = new Date(order.updated_at);
+  const minDate = addDays(statusDate, estimates.min);
+  const maxDate = addDays(statusDate, estimates.max);
+  
+  // Use the midpoint for estimated date
+  const estimatedDate = addDays(statusDate, Math.ceil((estimates.min + estimates.max) / 2));
+  
+  // Calculate days remaining
+  const daysRemaining = Math.max(0, differenceInDays(estimatedDate, today));
+  
+  // Calculate progress (from order date to estimated delivery)
+  const totalDays = differenceInDays(estimatedDate, orderDate);
+  const daysPassed = differenceInDays(today, orderDate);
+  const progress = totalDays > 0 ? Math.min(100, Math.max(0, (daysPassed / totalDays) * 100)) : 0;
+  
+  return {
+    estimatedDate,
+    dateRange: { min: minDate, max: maxDate },
+    daysRemaining,
+    progress,
+    isDelivered: false,
+    isDelayed: isAfter(today, maxDate),
+  };
+};
 
 export default function OrderTracking() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -237,6 +305,7 @@ export default function OrderTracking() {
 
   const currentStatusIndex = getStatusIndex(order.status);
   const isCancelled = order.status === 'cancelled';
+  const deliveryInfo = calculateDeliveryInfo(order);
 
   return (
     <Layout>
@@ -339,6 +408,75 @@ export default function OrderTracking() {
                 </div>
               )}
             </Card>
+
+            {/* Estimated Delivery Card */}
+            {!isCancelled && (
+              <Card className="p-6 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    {deliveryInfo.isDelivered ? (
+                      <>
+                        <h3 className="font-semibold text-lg text-green-600">Delivered!</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Your order was delivered on{' '}
+                          <span className="font-medium text-foreground">
+                            {format(deliveryInfo.deliveredOn!, 'EEEE, dd MMMM yyyy')}
+                          </span>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-semibold text-lg">Estimated Delivery</h3>
+                        {deliveryInfo.dateRange && (
+                          <div className="mt-2">
+                            <p className="text-2xl font-bold text-primary">
+                              {format(deliveryInfo.estimatedDate!, 'dd MMM')} - {format(deliveryInfo.dateRange.max, 'dd MMM')}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {format(deliveryInfo.dateRange.min, 'EEEE')} to {format(deliveryInfo.dateRange.max, 'EEEE')}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Delivery Progress */}
+                        <div className="mt-4 space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Delivery Progress</span>
+                            <span className="font-medium">{Math.round(deliveryInfo.progress)}%</span>
+                          </div>
+                          <Progress value={deliveryInfo.progress} className="h-2" />
+                        </div>
+
+                        {/* Days Remaining */}
+                        <div className="mt-4 flex items-center gap-2">
+                          <Timer className="h-4 w-4 text-muted-foreground" />
+                          {deliveryInfo.isDelayed ? (
+                            <span className="text-sm text-orange-600 font-medium">
+                              Delivery may be delayed. We apologize for the inconvenience.
+                            </span>
+                          ) : deliveryInfo.daysRemaining === 0 ? (
+                            <span className="text-sm text-green-600 font-medium">
+                              Arriving today!
+                            </span>
+                          ) : deliveryInfo.daysRemaining === 1 ? (
+                            <span className="text-sm font-medium">
+                              Arriving tomorrow
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              Arriving in <span className="font-medium text-foreground">{deliveryInfo.daysRemaining} days</span>
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Order Items */}
             <Card className="p-6">
