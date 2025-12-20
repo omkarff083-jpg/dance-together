@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 interface Message {
   id: string;
@@ -22,6 +23,7 @@ interface Conversation {
 
 export function CustomerSupportChat() {
   const { user } = useAuth();
+  const { playNotification } = useNotificationSound();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
@@ -65,6 +67,7 @@ export function CustomerSupportChat() {
             
             if (newMessage.sender_type === 'admin') {
               setAdminTyping(false);
+              playNotification();
               if (!isOpen || isMinimized) {
                 setUnreadCount((c) => c + 1);
               }
