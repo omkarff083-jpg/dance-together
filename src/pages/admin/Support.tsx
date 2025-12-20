@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 import {
   Popover,
   PopoverContent,
@@ -80,6 +81,7 @@ interface Conversation {
 
 export default function AdminSupport() {
   const { user } = useAuth();
+  const { playNotification } = useNotificationSound();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -140,6 +142,7 @@ export default function AdminSupport() {
             
             if (newMessage.sender_type === 'customer') {
               setCustomerTyping(false);
+              playNotification();
               toast.success('New message from customer!');
               markMessagesAsRead();
             }
