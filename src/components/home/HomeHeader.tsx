@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingCart, Search, Mic, Camera, MapPin, ChevronRight, Gift } from 'lucide-react';
+import { Heart, ShoppingCart, Search, Mic, Camera, MapPin, ChevronRight, Gift, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export function HomeHeader() {
   const { user } = useAuth();
@@ -15,10 +18,47 @@ export function HomeHeader() {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
+  // Handle voice search result
+  const handleVoiceResult = useCallback((transcript: string) => {
+    console.log('Voice search result:', transcript);
+    setSearchQuery(transcript);
+    toast.success(`Searching for: "${transcript}"`);
+    // Auto-navigate after voice search
+    if (transcript.trim()) {
+      navigate(`/products?search=${encodeURIComponent(transcript)}`);
+    }
+  }, [navigate]);
+
+  const { isListening, transcript, isSupported, startListening, stopListening } = useSpeechRecognition({
+    onResult: handleVoiceResult,
+    language: 'en-IN',
+  });
+
+  // Update search query while listening
+  useEffect(() => {
+    if (isListening && transcript) {
+      setSearchQuery(transcript);
+    }
+  }, [transcript, isListening]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const handleVoiceButtonClick = () => {
+    if (!isSupported) {
+      toast.error('Voice search is not supported in your browser');
+      return;
+    }
+
+    if (isListening) {
+      stopListening();
+    } else {
+      toast.info('Listening... Speak now');
+      startListening();
     }
   };
 
@@ -65,18 +105,36 @@ export function HomeHeader() {
       {/* Search Bar */}
       <div className="px-4 py-2">
         <form onSubmit={handleSearch} className="relative">
-          <div className="flex items-center bg-secondary/50 rounded-lg border border-border/50 overflow-hidden">
+          <div className={cn(
+            "flex items-center bg-secondary/50 rounded-lg border overflow-hidden transition-all duration-300",
+            isListening ? "border-accent ring-2 ring-accent/20" : "border-border/50"
+          )}>
             <Search className="h-5 w-5 text-muted-foreground ml-3" />
             <Input
               type="text"
-              placeholder="Search by Keyword or Product ID"
+              placeholder={isListening ? "Listening..." : "Search by Keyword or Product ID"}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground text-sm h-11"
             />
             <div className="flex items-center gap-1 pr-2">
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Mic className="h-5 w-5" />
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleVoiceButtonClick}
+                className={cn(
+                  "h-8 w-8 transition-colors",
+                  isListening 
+                    ? "text-accent bg-accent/10 animate-pulse" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {isListening ? (
+                  <MicOff className="h-5 w-5" />
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
               </Button>
               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <Camera className="h-5 w-5" />
@@ -84,6 +142,26 @@ export function HomeHeader() {
             </div>
           </div>
         </form>
+
+        {/* Voice Search Indicator */}
+        {isListening && (
+          <div className="flex items-center justify-center gap-2 mt-2 py-2 bg-accent/10 rounded-lg animate-fade-in">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-4 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-4 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-4 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className="text-sm text-accent font-medium">Listening...</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={stopListening}
+              className="h-6 px-2 text-xs text-accent hover:bg-accent/20"
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Delivery Location */}
