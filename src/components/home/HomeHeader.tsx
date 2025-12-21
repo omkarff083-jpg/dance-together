@@ -11,11 +11,13 @@ import { useNavigate } from 'react-router-dom';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ImageSearchModal } from './ImageSearchModal';
 
 export function HomeHeader() {
   const { user } = useAuth();
   const { totalItems } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isImageSearchOpen, setIsImageSearchOpen] = useState(false);
   const navigate = useNavigate();
 
   // Handle voice search result
@@ -136,7 +138,13 @@ export function HomeHeader() {
                   <Mic className="h-5 w-5" />
                 )}
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => setIsImageSearchOpen(true)}
+              >
                 <Camera className="h-5 w-5" />
               </Button>
             </div>
@@ -172,6 +180,16 @@ export function HomeHeader() {
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+
+      {/* Image Search Modal */}
+      <ImageSearchModal
+        open={isImageSearchOpen}
+        onClose={() => setIsImageSearchOpen(false)}
+        onSearchResult={(query) => {
+          setSearchQuery(query);
+          navigate(`/products?search=${encodeURIComponent(query)}`);
+        }}
+      />
     </header>
   );
 }
