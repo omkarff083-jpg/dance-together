@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, Loader2, Phone, Mail } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,22 +28,22 @@ const signupSchema = z.object({
   path: ['confirmPassword'],
 });
 
-const phoneSchema = z.object({
-  phone: z.string().min(10, 'Enter a valid phone number').max(15, 'Phone number too long'),
+const emailOtpSchema = z.object({
+  email: z.string().email('Enter a valid email address'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
-type PhoneFormData = z.infer<typeof phoneSchema>;
+type EmailOtpFormData = z.infer<typeof emailOtpSchema>;
 
 export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
+  const [authMethod, setAuthMethod] = useState<'email' | 'otp'>('email');
   const [otpSent, setOtpSent] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const { user, signIn, signUp, signInWithPhone, verifyOtp } = useAuth();
+  const { user, signIn, signUp, signInWithEmailOtp, verifyEmailOtp } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,9 +62,9 @@ export default function Auth() {
     defaultValues: { fullName: '', email: '', password: '', confirmPassword: '' },
   });
 
-  const phoneForm = useForm<PhoneFormData>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: '' },
+  const emailOtpForm = useForm<EmailOtpFormData>({
+    resolver: zodResolver(emailOtpSchema),
+    defaultValues: { email: '' },
   });
 
   const handleLogin = async (data: LoginFormData) => {
@@ -109,22 +109,16 @@ export default function Auth() {
     }
   };
 
-  const handlePhoneLogin = async (data: PhoneFormData) => {
+  const handleEmailOtpLogin = async (data: EmailOtpFormData) => {
     setLoading(true);
     try {
-      // Format phone number with country code if not present
-      let formattedPhone = data.phone.trim();
-      if (!formattedPhone.startsWith('+')) {
-        formattedPhone = '+91' + formattedPhone; // Default to India
-      }
-      
-      const { error } = await signInWithPhone(formattedPhone);
+      const { error } = await signInWithEmailOtp(data.email);
       if (error) {
         toast.error(error.message);
       } else {
-        setPhoneNumber(formattedPhone);
+        setOtpEmail(data.email);
         setOtpSent(true);
-        toast.success('OTP sent to your phone!');
+        toast.success('OTP sent to your email!');
       }
     } catch (error) {
       toast.error('Failed to send OTP');
@@ -141,11 +135,11 @@ export default function Auth() {
 
     setLoading(true);
     try {
-      const { error } = await verifyOtp(phoneNumber, otp);
+      const { error } = await verifyEmailOtp(otpEmail, otp);
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success('Phone verified successfully!');
+        toast.success('Email verified successfully!');
         navigate('/');
       }
     } catch (error) {
@@ -158,11 +152,11 @@ export default function Auth() {
   const handleResendOtp = async () => {
     setLoading(true);
     try {
-      const { error } = await signInWithPhone(phoneNumber);
+      const { error } = await signInWithEmailOtp(otpEmail);
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success('OTP resent!');
+        toast.success('OTP resent to your email!');
       }
     } catch (error) {
       toast.error('Failed to resend OTP');
@@ -195,40 +189,38 @@ export default function Auth() {
             </Button>
             <Button
               type="button"
-              variant={authMethod === 'phone' ? 'default' : 'outline'}
+              variant={authMethod === 'otp' ? 'default' : 'outline'}
               className="flex-1"
               onClick={() => {
-                setAuthMethod('phone');
+                setAuthMethod('otp');
                 setOtpSent(false);
               }}
             >
-              <Phone className="h-4 w-4 mr-2" />
-              Phone
+              <KeyRound className="h-4 w-4 mr-2" />
+              OTP Login
             </Button>
           </div>
 
-          {authMethod === 'phone' ? (
+          {authMethod === 'otp' ? (
             <div className="space-y-4">
               {!otpSent ? (
-                <form onSubmit={phoneForm.handleSubmit(handlePhoneLogin)} className="space-y-4">
+                <form onSubmit={emailOtpForm.handleSubmit(handleEmailOtpLogin)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <div className="flex gap-2">
-                      <div className="flex items-center px-3 bg-muted rounded-l-md border border-r-0">
-                        <span className="text-sm text-muted-foreground">+91</span>
-                      </div>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="9876543210"
-                        className="rounded-l-none"
-                        {...phoneForm.register('phone')}
-                      />
-                    </div>
-                    {phoneForm.formState.errors.phone && (
-                      <p className="text-sm text-destructive">{phoneForm.formState.errors.phone.message}</p>
+                    <Label htmlFor="otp-email">Email Address</Label>
+                    <Input
+                      id="otp-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      {...emailOtpForm.register('email')}
+                    />
+                    {emailOtpForm.formState.errors.email && (
+                      <p className="text-sm text-destructive">{emailOtpForm.formState.errors.email.message}</p>
                     )}
                   </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    We'll send a 6-digit code to your email for passwordless login
+                  </p>
 
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -241,7 +233,7 @@ export default function Auth() {
                     <p className="text-sm text-muted-foreground">
                       Enter the 6-digit OTP sent to
                     </p>
-                    <p className="font-medium">{phoneNumber}</p>
+                    <p className="font-medium">{otpEmail}</p>
                   </div>
 
                   <div className="flex justify-center">
@@ -273,7 +265,7 @@ export default function Auth() {
                       className="p-0 h-auto"
                       onClick={() => setOtpSent(false)}
                     >
-                      Change Number
+                      Change Email
                     </Button>
                     <Button
                       type="button"
