@@ -9,8 +9,8 @@ interface AuthContextType {
   isAdmin: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (phone: string, token: string) => Promise<{ error: Error | null }>;
+  signInWithEmailOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -93,19 +93,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signInWithPhone = async (phone: string) => {
+  const signInWithEmailOtp = async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
-      phone,
+      email,
+      options: {
+        shouldCreateUser: true,
+      }
     });
     
     return { error: error as Error | null };
   };
 
-  const verifyOtp = async (phone: string, token: string) => {
+  const verifyEmailOtp = async (email: string, token: string) => {
     const { error } = await supabase.auth.verifyOtp({
-      phone,
+      email,
       token,
-      type: 'sms'
+      type: 'email'
     });
     
     return { error: error as Error | null };
@@ -119,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, signUp, signIn, signInWithPhone, verifyOtp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, signUp, signIn, signInWithEmailOtp, verifyEmailOtp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
