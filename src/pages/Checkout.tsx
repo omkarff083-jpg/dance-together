@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -335,7 +335,23 @@ export default function Checkout() {
     navigate('/orders');
   };
 
-  // Simple UPI - no deep links to avoid risk policy issues
+  // UPI deep link generator with auto-filled amount
+  const openUpiApp = (app: string) => {
+    if (!paymentSettings?.upi_id) return;
+    
+    const upiId = paymentSettings.upi_id;
+    const amount = finalTotal.toString();
+    const name = encodeURIComponent('LUXE Store');
+    const note = encodeURIComponent('Order Payment');
+    
+    // Standard UPI deep link format with amount pre-filled
+    const upiLink = `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
+    
+    // Open the UPI link - this will trigger app chooser on mobile
+    window.location.href = upiLink;
+    
+    toast.info('Opening UPI app with amount ₹' + finalTotal);
+  };
 
   const handleSubmit = async (data: AddressFormData) => {
     if (paymentMethod === 'razorpay') {
@@ -562,7 +578,7 @@ export default function Checkout() {
         </form>
       </div>
 
-      {/* Simple UPI Payment Dialog - No deep links to avoid risk policy blocks */}
+      {/* UPI Payment Dialog with App Redirect */}
       <Dialog open={showUpiDialog} onOpenChange={setShowUpiDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -572,27 +588,85 @@ export default function Checkout() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Amount Display */}
-            <div className="text-center py-4 bg-secondary/30 rounded-lg">
-              <p className="text-3xl font-bold">₹{finalTotal.toLocaleString()}</p>
+            <div className="text-center py-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border">
+              <p className="text-3xl font-bold text-primary">₹{finalTotal.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground mt-1">Rupees {numberToWords(finalTotal)} Only</p>
+            </div>
+
+            {/* UPI App Buttons - Amount will be auto-filled */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-center">Pay using UPI App (Amount auto-filled)</p>
+              <div className="grid grid-cols-3 gap-3">
+                <Button
+                  variant="outline"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-300"
+                  onClick={() => openUpiApp('phonepe')}
+                >
+                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">Pe</span>
+                  </div>
+                  <span className="text-xs font-medium">PhonePe</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-300"
+                  onClick={() => openUpiApp('paytm')}
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">Paytm</span>
+                  </div>
+                  <span className="text-xs font-medium">Paytm</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-green-50 hover:border-green-300"
+                  onClick={() => openUpiApp('gpay')}
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">G</span>
+                  </div>
+                  <span className="text-xs font-medium">GPay</span>
+                </Button>
+              </div>
+              
+              <Button
+                variant="outline"
+                className="w-full h-12 flex items-center justify-center gap-2"
+                onClick={() => openUpiApp('any')}
+              >
+                <Smartphone className="h-5 w-5" />
+                <span>Open Any UPI App</span>
+              </Button>
+            </div>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or scan QR</span>
+              </div>
             </div>
 
             {/* QR Code */}
             <div className="flex justify-center">
-              <div className="bg-white p-4 rounded-xl shadow-md border">
+              <div className="bg-white p-3 rounded-xl shadow-md border">
                 <img 
                   src={generateUpiQR()} 
                   alt="UPI QR Code" 
-                  className="w-52 h-52"
+                  className="w-40 h-40"
                 />
               </div>
             </div>
             
             {/* UPI ID with Copy */}
             <div className="flex items-center gap-2 bg-secondary p-3 rounded-lg">
-              <span className="flex-1 font-mono text-sm text-center">{paymentSettings?.upi_id}</span>
+              <span className="flex-1 font-mono text-xs text-center">{paymentSettings?.upi_id}</span>
               <Button
                 type="button"
                 variant="ghost"
@@ -602,10 +676,6 @@ export default function Checkout() {
                 {upiCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-
-            <p className="text-sm text-muted-foreground text-center">
-              Scan QR code or pay directly to the UPI ID using any UPI app (GPay, PhonePe, Paytm etc.)
-            </p>
 
             {/* Confirm Button */}
             <Button onClick={() => confirmUpiPayment()} className="w-full" size="lg">
