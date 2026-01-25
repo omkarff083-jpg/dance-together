@@ -277,23 +277,37 @@ export type Database = {
       payment_settings: {
         Row: {
           bharatpay_api_key: string | null
+          bharatpay_display_description: string | null
+          bharatpay_display_name: string | null
           bharatpay_enabled: boolean | null
           bharatpay_merchant_id: string | null
           cashfree_app_id: string | null
+          cashfree_display_description: string | null
+          cashfree_display_name: string | null
           cashfree_enabled: boolean | null
           cashfree_secret_key: string | null
+          cod_display_description: string | null
+          cod_display_name: string | null
           cod_enabled: boolean | null
           id: string
+          paytm_display_description: string | null
+          paytm_display_name: string | null
           paytm_enabled: boolean | null
           paytm_merchant_id: string | null
           paytm_merchant_key: string | null
           payyou_api_key: string | null
+          payyou_display_description: string | null
+          payyou_display_name: string | null
           payyou_enabled: boolean | null
           payyou_merchant_id: string | null
+          phonepe_display_description: string | null
+          phonepe_display_name: string | null
           phonepe_enabled: boolean | null
           phonepe_merchant_id: string | null
           phonepe_salt_index: string | null
           phonepe_salt_key: string | null
+          razorpay_display_description: string | null
+          razorpay_display_name: string | null
           razorpay_enabled: boolean | null
           razorpay_key_id: string | null
           razorpay_key_secret: string | null
@@ -309,23 +323,37 @@ export type Database = {
         }
         Insert: {
           bharatpay_api_key?: string | null
+          bharatpay_display_description?: string | null
+          bharatpay_display_name?: string | null
           bharatpay_enabled?: boolean | null
           bharatpay_merchant_id?: string | null
           cashfree_app_id?: string | null
+          cashfree_display_description?: string | null
+          cashfree_display_name?: string | null
           cashfree_enabled?: boolean | null
           cashfree_secret_key?: string | null
+          cod_display_description?: string | null
+          cod_display_name?: string | null
           cod_enabled?: boolean | null
           id?: string
+          paytm_display_description?: string | null
+          paytm_display_name?: string | null
           paytm_enabled?: boolean | null
           paytm_merchant_id?: string | null
           paytm_merchant_key?: string | null
           payyou_api_key?: string | null
+          payyou_display_description?: string | null
+          payyou_display_name?: string | null
           payyou_enabled?: boolean | null
           payyou_merchant_id?: string | null
+          phonepe_display_description?: string | null
+          phonepe_display_name?: string | null
           phonepe_enabled?: boolean | null
           phonepe_merchant_id?: string | null
           phonepe_salt_index?: string | null
           phonepe_salt_key?: string | null
+          razorpay_display_description?: string | null
+          razorpay_display_name?: string | null
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
           razorpay_key_secret?: string | null
@@ -341,23 +369,37 @@ export type Database = {
         }
         Update: {
           bharatpay_api_key?: string | null
+          bharatpay_display_description?: string | null
+          bharatpay_display_name?: string | null
           bharatpay_enabled?: boolean | null
           bharatpay_merchant_id?: string | null
           cashfree_app_id?: string | null
+          cashfree_display_description?: string | null
+          cashfree_display_name?: string | null
           cashfree_enabled?: boolean | null
           cashfree_secret_key?: string | null
+          cod_display_description?: string | null
+          cod_display_name?: string | null
           cod_enabled?: boolean | null
           id?: string
+          paytm_display_description?: string | null
+          paytm_display_name?: string | null
           paytm_enabled?: boolean | null
           paytm_merchant_id?: string | null
           paytm_merchant_key?: string | null
           payyou_api_key?: string | null
+          payyou_display_description?: string | null
+          payyou_display_name?: string | null
           payyou_enabled?: boolean | null
           payyou_merchant_id?: string | null
+          phonepe_display_description?: string | null
+          phonepe_display_name?: string | null
           phonepe_enabled?: boolean | null
           phonepe_merchant_id?: string | null
           phonepe_salt_index?: string | null
           phonepe_salt_key?: string | null
+          razorpay_display_description?: string | null
+          razorpay_display_name?: string | null
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
           razorpay_key_secret?: string | null
