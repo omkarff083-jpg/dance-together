@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, Loader2, Shield, Lock, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield, Lock, ArrowLeft, Mail, CheckCircle, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,23 +21,44 @@ const resetSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
+const newPasswordSchema = z.object({
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
 type ResetFormData = z.infer<typeof resetSchema>;
+type NewPasswordFormData = z.infer<typeof newPasswordSchema>;
 
 export default function AdminOwner() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const { user, isAdmin, signIn, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for password recovery mode from URL hash
+  useEffect(() => {
+    const hashParams = new URLSearchParams(location.hash.substring(1));
+    const type = hashParams.get('type');
+    if (type === 'recovery') {
+      setIsPasswordRecovery(true);
+    }
+  }, [location]);
 
   useEffect(() => {
-    // If already logged in as admin, redirect to admin dashboard
-    if (!authLoading && user && isAdmin) {
+    // If already logged in as admin and not in recovery mode, redirect to admin dashboard
+    if (!authLoading && user && isAdmin && !isPasswordRecovery) {
       navigate('/admin');
     }
-  }, [user, isAdmin, authLoading, navigate]);
+  }, [user, isAdmin, authLoading, navigate, isPasswordRecovery]);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -47,6 +68,11 @@ export default function AdminOwner() {
   const resetForm = useForm<ResetFormData>({
     resolver: zodResolver(resetSchema),
     defaultValues: { email: '' },
+  });
+
+  const newPasswordForm = useForm<NewPasswordFormData>({
+    resolver: zodResolver(newPasswordSchema),
+    defaultValues: { password: '', confirmPassword: '' },
   });
 
   const handleLogin = async (data: LoginFormData) => {
@@ -62,6 +88,29 @@ export default function AdminOwner() {
       } else {
         // Check will happen via useEffect after auth state changes
         toast.success('Checking admin access...');
+      }
+    } catch (error) {
+      toast.error('An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetNewPassword = async (data: NewPasswordFormData) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: data.password,
+      });
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Password updated successfully!');
+        setIsPasswordRecovery(false);
+        // Clear the hash from URL
+        window.history.replaceState(null, '', window.location.pathname);
+        navigate('/admin');
       }
     } catch (error) {
       toast.error('An error occurred');
@@ -89,6 +138,81 @@ export default function AdminOwner() {
       setLoading(false);
     }
   };
+
+  // Show set new password form (password recovery mode)
+  if (isPasswordRecovery) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-gray-900 to-gray-800">
+        <Card className="w-full max-w-md border-primary/20 shadow-2xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <KeyRound className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="font-display text-2xl">Set New Password</CardTitle>
+            <CardDescription>Enter your new password below</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={newPasswordForm.handleSubmit(handleSetNewPassword)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    {...newPasswordForm.register('password')}
+                    className="bg-secondary/50"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {newPasswordForm.formState.errors.password && (
+                  <p className="text-sm text-destructive">{newPasswordForm.formState.errors.password.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    {...newPasswordForm.register('confirmPassword')}
+                    className="bg-secondary/50"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {newPasswordForm.formState.errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{newPasswordForm.formState.errors.confirmPassword.message}</p>
+                )}
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                Update Password
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Show access denied if logged in but not admin
   if (!authLoading && user && !isAdmin) {
