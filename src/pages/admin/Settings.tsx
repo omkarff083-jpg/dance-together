@@ -33,6 +33,7 @@ interface PaymentSettings {
   phonepe_merchant_id: string;
   phonepe_salt_key: string;
   phonepe_salt_index: string;
+  cod_enabled: boolean;
 }
 
 export default function AdminSettings() {
@@ -62,6 +63,7 @@ export default function AdminSettings() {
     phonepe_merchant_id: '',
     phonepe_salt_key: '',
     phonepe_salt_index: '',
+    cod_enabled: true,
   });
 
   useEffect(() => { fetchSettings(); }, []);
@@ -91,6 +93,7 @@ export default function AdminSettings() {
         phonepe_merchant_id: (data as any).phonepe_merchant_id || '',
         phonepe_salt_key: (data as any).phonepe_salt_key || '',
         phonepe_salt_index: (data as any).phonepe_salt_index || '',
+        cod_enabled: (data as any).cod_enabled ?? true,
       });
     }
     setLoading(false);
@@ -131,6 +134,7 @@ export default function AdminSettings() {
         phonepe_merchant_id: settings.phonepe_merchant_id,
         phonepe_salt_key: settings.phonepe_salt_key,
         phonepe_salt_index: settings.phonepe_salt_index,
+        cod_enabled: settings.cod_enabled,
       };
 
       if (existing) {
@@ -213,7 +217,7 @@ export default function AdminSettings() {
         ) : (
           <div className="space-y-6">
             <Tabs defaultValue="razorpay" className="w-full">
-              <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto gap-1 p-1">
+              <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full h-auto gap-1 p-1">
                 <TabsTrigger value="razorpay" className="text-xs sm:text-sm">
                   Razorpay
                   {settings.razorpay_enabled && <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" />}
@@ -241,6 +245,10 @@ export default function AdminSettings() {
                 <TabsTrigger value="phonepe" className="text-xs sm:text-sm">
                   PhonePe
                   {settings.phonepe_enabled && <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" />}
+                </TabsTrigger>
+                <TabsTrigger value="cod" className="text-xs sm:text-sm">
+                  COD
+                  {settings.cod_enabled && <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" />}
                 </TabsTrigger>
               </TabsList>
 
@@ -597,6 +605,53 @@ export default function AdminSettings() {
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                         <p className="text-sm text-amber-700">
                           ⚠️ Enter Merchant ID and Salt Key to enable PhonePe payments
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Cash on Delivery */}
+              <TabsContent value="cod">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-100 rounded-lg">
+                          <Banknote className="h-6 w-6 text-amber-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Cash on Delivery (COD)</CardTitle>
+                          <CardDescription>Allow customers to pay when they receive their order</CardDescription>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={settings.cod_enabled}
+                        onCheckedChange={(v) => updateSetting('cod_enabled', v)}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <h4 className="font-medium text-amber-800 mb-2">💰 Cash on Delivery Settings</h4>
+                      <ul className="text-sm text-amber-700 space-y-1">
+                        <li>• जब यह ON है, तो customers COD से order कर सकते हैं</li>
+                        <li>• जब यह OFF है, तो COD option checkout में नहीं दिखेगा</li>
+                        <li>• आप individual products के लिए भी COD on/off कर सकते हैं (Products section में)</li>
+                      </ul>
+                    </div>
+                    
+                    {settings.cod_enabled ? (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                        <p className="text-sm text-green-700 flex items-center gap-2">
+                          ✅ Cash on Delivery is currently <strong>enabled</strong> for your store
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-sm text-red-700 flex items-center gap-2">
+                          ❌ Cash on Delivery is currently <strong>disabled</strong> - customers must pay online
                         </p>
                       </div>
                     )}

@@ -183,6 +183,7 @@ export type Database = {
           cashfree_app_id: string | null
           cashfree_enabled: boolean | null
           cashfree_secret_key: string | null
+          cod_enabled: boolean | null
           id: string
           paytm_enabled: boolean | null
           paytm_merchant_id: string | null
@@ -208,6 +209,7 @@ export type Database = {
           cashfree_app_id?: string | null
           cashfree_enabled?: boolean | null
           cashfree_secret_key?: string | null
+          cod_enabled?: boolean | null
           id?: string
           paytm_enabled?: boolean | null
           paytm_merchant_id?: string | null
@@ -233,6 +235,7 @@ export type Database = {
           cashfree_app_id?: string | null
           cashfree_enabled?: boolean | null
           cashfree_secret_key?: string | null
+          cod_enabled?: boolean | null
           id?: string
           paytm_enabled?: boolean | null
           paytm_merchant_id?: string | null
@@ -257,6 +260,7 @@ export type Database = {
         Row: {
           active: boolean | null
           category_id: string | null
+          cod_available: boolean | null
           colors: string[] | null
           created_at: string
           description: string | null
@@ -274,6 +278,7 @@ export type Database = {
         Insert: {
           active?: boolean | null
           category_id?: string | null
+          cod_available?: boolean | null
           colors?: string[] | null
           created_at?: string
           description?: string | null
@@ -291,6 +296,7 @@ export type Database = {
         Update: {
           active?: boolean | null
           category_id?: string | null
+          cod_available?: boolean | null
           colors?: string[] | null
           created_at?: string
           description?: string | null

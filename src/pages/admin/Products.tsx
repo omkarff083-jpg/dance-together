@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Search, Loader2, CheckSquare, Square, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Loader2, CheckSquare, Square, ToggleLeft, ToggleRight, Banknote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,7 @@ interface Product {
   images: string[];
   featured: boolean;
   active: boolean;
+  cod_available: boolean;
   category?: { name: string } | null;
 }
 
@@ -64,6 +65,7 @@ export default function AdminProducts() {
     images: [] as string[],
     featured: false,
     active: true,
+    cod_available: true,
   });
 
   useEffect(() => {
@@ -111,6 +113,7 @@ export default function AdminProducts() {
       images: [],
       featured: false,
       active: true,
+      cod_available: true,
     });
     setEditingProduct(null);
   };
@@ -130,6 +133,7 @@ export default function AdminProducts() {
       images: product.images || [],
       featured: product.featured,
       active: product.active,
+      cod_available: product.cod_available ?? true,
     });
     setIsDialogOpen(true);
   };
@@ -155,6 +159,7 @@ export default function AdminProducts() {
         images: formData.images,
         featured: formData.featured,
         active: formData.active,
+        cod_available: formData.cod_available,
       };
 
       if (editingProduct) {
@@ -412,7 +417,7 @@ export default function AdminProducts() {
                   />
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex flex-wrap items-center gap-6">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={formData.featured}
@@ -426,6 +431,16 @@ export default function AdminProducts() {
                       onCheckedChange={(checked) => setFormData({ ...formData, active: checked })}
                     />
                     <Label>Active</Label>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg border bg-amber-50 border-amber-200">
+                    <Switch
+                      checked={formData.cod_available}
+                      onCheckedChange={(checked) => setFormData({ ...formData, cod_available: checked })}
+                    />
+                    <Label className="flex items-center gap-1.5">
+                      <Banknote className="h-4 w-4 text-amber-600" />
+                      <span>Cash on Delivery</span>
+                    </Label>
                   </div>
                 </div>
 
