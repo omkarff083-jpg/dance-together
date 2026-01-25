@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CustomerSupportChat } from "@/components/support/CustomerSupportChat";
@@ -38,7 +38,7 @@ const App = () => (
           <CartProvider>
             <Routes>
               <Route path="/" element={<Home />} />
-              {/* Auth page removed - store is fully public */}
+              <Route path="/auth" element={<Navigate to="/" replace />} />
               <Route path="/products" element={<Products />} />
               <Route path="/product/:slug" element={<ProductDetail />} />
               <Route path="/categories" element={<Categories />} />
