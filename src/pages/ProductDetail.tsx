@@ -15,6 +15,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PincodeChecker } from '@/components/checkout/PincodeChecker';
 
 interface Product {
   id: string;
@@ -580,6 +581,15 @@ export default function ProductDetail() {
                 Buy Now
               </Button>
             </div>
+
+            {/* Delivery Check */}
+            <Card className="p-4">
+              <PincodeChecker
+                onPincodeVerified={(info) => {
+                  // Just for display, no need to store
+                }}
+              />
+            </Card>
 
             {/* Features */}
             <div className="grid grid-cols-3 gap-4 pt-4">
