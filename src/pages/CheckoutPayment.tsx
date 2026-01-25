@@ -47,6 +47,8 @@ interface AddressData {
 
 interface PaymentSettings {
   razorpay_enabled: boolean;
+  razorpay_upi_enabled: boolean;
+  razorpay_upi_id: string | null;
   upi_enabled: boolean;
   upi_id: string | null;
   paytm_enabled: boolean;
@@ -158,7 +160,7 @@ export default function CheckoutPayment() {
   const fetchPaymentSettings = async () => {
     const { data } = await supabase
       .from('payment_settings')
-      .select('razorpay_enabled, upi_enabled, upi_id, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled, cod_enabled')
+      .select('razorpay_enabled, razorpay_upi_enabled, razorpay_upi_id, upi_enabled, upi_id, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled, cod_enabled')
       .limit(1)
       .maybeSingle();
     
@@ -166,6 +168,8 @@ export default function CheckoutPayment() {
       setPaymentSettings(data as PaymentSettings);
       if (data.razorpay_enabled) {
         setPaymentMethod('razorpay');
+      } else if ((data as any).razorpay_upi_enabled && (data as any).razorpay_upi_id) {
+        setPaymentMethod('razorpay_upi');
       } else if ((data as any).paytm_enabled) {
         setPaymentMethod('paytm');
       } else if ((data as any).cashfree_enabled) {
@@ -549,8 +553,9 @@ export default function CheckoutPayment() {
   };
 
   const copyUpiId = () => {
-    if (paymentSettings?.upi_id) {
-      navigator.clipboard.writeText(paymentSettings.upi_id);
+    const upiId = getCurrentUpiId();
+    if (upiId) {
+      navigator.clipboard.writeText(upiId);
       setUpiCopied(true);
       toast.success('UPI ID copied!');
       setTimeout(() => setUpiCopied(false), 2000);
@@ -559,9 +564,10 @@ export default function CheckoutPayment() {
 
   const confirmUpiPayment = async (withUtr?: boolean) => {
     if (withUtr && pendingOrderId && utrNumber.trim()) {
+      const prefix = paymentMethod === 'razorpay_upi' ? 'TRID:' : 'UTR:';
       await supabase
         .from('orders')
-        .update({ payment_id: `UTR:${utrNumber.trim()}`, status: 'pending' })
+        .update({ payment_id: `${prefix}${utrNumber.trim()}`, status: 'pending' })
         .eq('id', pendingOrderId);
       await clearCheckoutItems();
       setShowUpiDialog(false);
@@ -619,9 +625,9 @@ export default function CheckoutPayment() {
   };
 
   const openUpiApp = (app: string) => {
-    if (!paymentSettings?.upi_id) return;
+    const upiId = getCurrentUpiId();
+    if (!upiId) return;
     
-    const upiId = paymentSettings.upi_id;
     const amount = finalTotal.toString();
     const name = encodeURIComponent('LUXE Store');
     const note = encodeURIComponent('Order Payment');
@@ -642,7 +648,7 @@ export default function CheckoutPayment() {
 
     if (paymentMethod === 'razorpay') {
       await handleRazorpayPayment();
-    } else if (paymentMethod === 'upi') {
+    } else if (paymentMethod === 'upi' || paymentMethod === 'razorpay_upi') {
       await handleUpiPayment();
     } else if (['paytm', 'cashfree', 'phonepe', 'bharatpay', 'payyou'].includes(paymentMethod)) {
       toast.info(`${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} integration is coming soon. Please use another payment method.`);
@@ -662,10 +668,15 @@ export default function CheckoutPayment() {
     }
   };
 
-  const generateUpiQR = () => {
-    if (!paymentSettings?.upi_id) return '';
-    const upiString = `upi://pay?pa=${paymentSettings.upi_id}&pn=LUXE&am=${finalTotal}&cu=INR`;
+  const generateUpiQR = (forRazorpayUpi?: boolean) => {
+    const upiId = forRazorpayUpi ? paymentSettings?.razorpay_upi_id : paymentSettings?.upi_id;
+    if (!upiId) return '';
+    const upiString = `upi://pay?pa=${upiId}&pn=LUXE&am=${finalTotal}&cu=INR`;
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
+  };
+
+  const getCurrentUpiId = () => {
+    return paymentMethod === 'razorpay_upi' ? paymentSettings?.razorpay_upi_id : paymentSettings?.upi_id;
   };
 
   const hasItems = isBuyNowMode ? !!buyNowItem : (user ? items.length > 0 : true);
@@ -674,6 +685,7 @@ export default function CheckoutPayment() {
   }
 
   const isRazorpayAvailable = paymentSettings?.razorpay_enabled;
+  const isRazorpayUpiAvailable = paymentSettings?.razorpay_upi_enabled && paymentSettings?.razorpay_upi_id;
   const isUpiAvailable = paymentSettings?.upi_enabled && paymentSettings?.upi_id;
   const isPaytmAvailable = paymentSettings?.paytm_enabled;
   const isCashfreeAvailable = paymentSettings?.cashfree_enabled;
@@ -808,6 +820,23 @@ export default function CheckoutPayment() {
                         <div>
                           <p className="font-medium">Pay Online (Razorpay)</p>
                           <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking, Wallets</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+
+                {isRazorpayUpiAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="razorpay_upi" id="razorpay_upi" />
+                    <Label htmlFor="razorpay_upi" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">RZP</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">Razorpay UPI</p>
+                          <p className="text-sm text-muted-foreground">Pay via QR & Enter TR ID</p>
                         </div>
                       </div>
                     </Label>
@@ -1026,6 +1055,7 @@ export default function CheckoutPayment() {
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : null}
                 {paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
+                 paymentMethod === 'razorpay_upi' ? 'Pay with Razorpay UPI' :
                  paymentMethod === 'paytm' ? 'Pay with Paytm' :
                  paymentMethod === 'cashfree' ? 'Pay with Cashfree' :
                  paymentMethod === 'phonepe' ? 'Pay with PhonePe' :
@@ -1043,13 +1073,23 @@ export default function CheckoutPayment() {
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-2">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                <QrCode className="h-5 w-5 text-white" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                paymentMethod === 'razorpay_upi' 
+                  ? 'bg-gradient-to-br from-blue-500 to-blue-700' 
+                  : 'bg-gradient-to-br from-green-500 to-emerald-600'
+              }`}>
+                {paymentMethod === 'razorpay_upi' ? (
+                  <span className="text-white font-bold text-xs">RZP</span>
+                ) : (
+                  <QrCode className="h-5 w-5 text-white" />
+                )}
               </div>
             </div>
-            <DialogTitle className="text-center text-xl">Complete Your Payment</DialogTitle>
+            <DialogTitle className="text-center text-xl">
+              {paymentMethod === 'razorpay_upi' ? 'Razorpay UPI Payment' : 'Complete Your Payment'}
+            </DialogTitle>
             <DialogDescription className="text-center">
-              Secure UPI Payment • Order ID: #{pendingOrderId?.slice(0, 8).toUpperCase()}
+              {paymentMethod === 'razorpay_upi' ? 'Pay via Razorpay UPI & Enter TR ID' : 'Secure UPI Payment'} • Order ID: #{pendingOrderId?.slice(0, 8).toUpperCase()}
             </DialogDescription>
           </DialogHeader>
           
@@ -1157,7 +1197,7 @@ export default function CheckoutPayment() {
             <div className="flex justify-center">
               <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-gray-100 relative">
                 <img 
-                  src={generateUpiQR()} 
+                  src={generateUpiQR(paymentMethod === 'razorpay_upi')} 
                   alt="UPI QR Code" 
                   className="w-44 h-44 rounded-lg"
                 />
@@ -1169,10 +1209,12 @@ export default function CheckoutPayment() {
             
             {/* UPI ID */}
             <div className="bg-secondary/80 p-3 rounded-xl border">
-              <p className="text-xs text-muted-foreground text-center mb-2">UPI ID</p>
+              <p className="text-xs text-muted-foreground text-center mb-2">
+                {paymentMethod === 'razorpay_upi' ? 'Razorpay UPI ID' : 'UPI ID'}
+              </p>
               <div className="flex items-center gap-2 bg-background p-2 rounded-lg">
                 <span className="flex-1 font-mono text-sm text-center font-medium truncate">
-                  {paymentSettings?.upi_id}
+                  {getCurrentUpiId()}
                 </span>
                 <Button
                   type="button"
@@ -1200,38 +1242,66 @@ export default function CheckoutPayment() {
               </div>
             </div>
 
-            {/* UTR Input Section */}
-            <div className="space-y-3 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border border-primary/20">
+            {/* UTR/TR ID Input Section */}
+            <div className={`space-y-3 p-4 rounded-xl border ${
+              paymentMethod === 'razorpay_upi' 
+                ? 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-blue-200 dark:border-blue-800'
+                : 'bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20'
+            }`}>
               <div className="flex items-center justify-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Check className="h-3 w-3 text-primary" />
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  paymentMethod === 'razorpay_upi' ? 'bg-blue-200 dark:bg-blue-800' : 'bg-primary/20'
+                }`}>
+                  <Check className={`h-3 w-3 ${paymentMethod === 'razorpay_upi' ? 'text-blue-600' : 'text-primary'}`} />
                 </div>
-                <p className="text-sm font-semibold">Enter UTR for Quick Verification</p>
+                <p className="text-sm font-semibold">
+                  {paymentMethod === 'razorpay_upi' ? 'Enter TR ID for Quick Verification' : 'Enter UTR for Quick Verification'}
+                </p>
               </div>
               
               <div className="space-y-2">
                 <Input
-                  placeholder="Enter 12-digit UTR number"
+                  placeholder={paymentMethod === 'razorpay_upi' ? 'Enter TR ID (e.g., RZCo8ouCwkJJI7qrv2)' : 'Enter 12-digit UTR number'}
                   value={utrNumber}
-                  onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                  onChange={(e) => {
+                    if (paymentMethod === 'razorpay_upi') {
+                      // Allow alphanumeric for TR ID
+                      setUtrNumber(e.target.value.slice(0, 20));
+                    } else {
+                      // Only digits for UTR
+                      setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12));
+                    }
+                  }}
                   className="font-mono text-center text-lg h-12 tracking-wider border-2 focus:border-primary"
-                  maxLength={12}
+                  maxLength={paymentMethod === 'razorpay_upi' ? 20 : 12}
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <span className={`w-2 h-2 rounded-full ${utrNumber.length >= 10 ? 'bg-green-500' : 'bg-gray-300'}`} />
-                    {utrNumber.length}/12 digits
+                    <span className={`w-2 h-2 rounded-full ${utrNumber.length >= (paymentMethod === 'razorpay_upi' ? 8 : 10) ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    {utrNumber.length} characters
                   </span>
-                  <span>Find UTR in payment history</span>
+                  <span>{paymentMethod === 'razorpay_upi' ? 'Find TR ID in Razorpay' : 'Find UTR in payment history'}</span>
                 </div>
               </div>
               
               <div className="bg-background/80 p-3 rounded-lg border text-xs space-y-1">
-                <p className="font-medium text-center">📱 Where to find UTR?</p>
+                <p className="font-medium text-center">
+                  {paymentMethod === 'razorpay_upi' ? '📱 Where to find TR ID?' : '📱 Where to find UTR?'}
+                </p>
                 <ul className="text-muted-foreground space-y-0.5">
-                  <li>• Open your UPI app → Payment History</li>
-                  <li>• Find this transaction → Copy UTR/Reference ID</li>
-                  <li>• It's usually a 12-digit number</li>
+                  {paymentMethod === 'razorpay_upi' ? (
+                    <>
+                      <li>• Open your UPI app → Payment History</li>
+                      <li>• Find this transaction → Copy Transaction Reference</li>
+                      <li>• Razorpay TR ID starts with "RZC..."</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>• Open your UPI app → Payment History</li>
+                      <li>• Find this transaction → Copy UTR/Reference ID</li>
+                      <li>• It's usually a 12-digit number</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </div>
@@ -1240,12 +1310,16 @@ export default function CheckoutPayment() {
             <div className="space-y-3 pt-2">
               <Button 
                 onClick={() => confirmUpiPayment(true)} 
-                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700" 
+                className={`w-full h-12 text-base font-semibold ${
+                  paymentMethod === 'razorpay_upi'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                }`} 
                 size="lg"
-                disabled={utrNumber.length < 10}
+                disabled={utrNumber.length < (paymentMethod === 'razorpay_upi' ? 8 : 10)}
               >
                 <CheckCircle className="h-5 w-5 mr-2" />
-                Submit UTR & Confirm Order
+                {paymentMethod === 'razorpay_upi' ? 'Submit TR ID & Confirm Order' : 'Submit UTR & Confirm Order'}
               </Button>
               
               <div className="relative">
