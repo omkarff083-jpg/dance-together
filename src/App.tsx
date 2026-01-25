@@ -30,6 +30,7 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminSupport from "./pages/admin/Support";
 import AdminUsers from "./pages/admin/Users";
 import AdminPincodes from "./pages/admin/Pincodes";
+import AdminCoupons from "./pages/admin/Coupons";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,8 @@ const App = () => (
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/support" element={<AdminSupport />} />
               <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/coupons" element={<AdminCoupons />} />
+              
               
               <Route path="*" element={<NotFound />} />
             </Routes>

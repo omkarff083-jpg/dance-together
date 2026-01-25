@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, Package, ArrowRight, Wallet, Building2 } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, Package, ArrowRight, Wallet, Building2, Ticket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,7 +84,16 @@ export default function Checkout() {
   const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
   const [utrNumber, setUtrNumber] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    id: string;
+    code: string;
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number;
+    max_discount_amount: number | null;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
 
@@ -249,7 +258,99 @@ export default function Checkout() {
     ? (buyNowItem.product.sale_price || buyNowItem.product.price) * buyNowItem.quantity
     : totalAmount;
   const shipping = checkoutTotal >= 999 ? 0 : 99;
-  const finalTotal = checkoutTotal + shipping;
+  const subtotalWithShipping = checkoutTotal + shipping;
+  const finalTotal = subtotalWithShipping - discountAmount;
+
+  // Apply coupon handler
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+
+    setCouponLoading(true);
+    try {
+      const { data: coupon, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.toUpperCase().trim())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!coupon) {
+        toast.error('Invalid coupon code');
+        setCouponLoading(false);
+        return;
+      }
+
+      // Check validity dates
+      if (coupon.valid_from && new Date(coupon.valid_from) > new Date()) {
+        toast.error('This coupon is not yet active');
+        setCouponLoading(false);
+        return;
+      }
+
+      if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
+        toast.error('This coupon has expired');
+        setCouponLoading(false);
+        return;
+      }
+
+      // Check usage limit
+      if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
+        toast.error('This coupon has been fully redeemed');
+        setCouponLoading(false);
+        return;
+      }
+
+      // Check minimum order amount
+      if (coupon.min_order_amount && checkoutTotal < coupon.min_order_amount) {
+        toast.error(`Minimum order amount is ₹${coupon.min_order_amount}`);
+        setCouponLoading(false);
+        return;
+      }
+
+      // Calculate discount
+      let discount = 0;
+      if (coupon.discount_type === 'percentage') {
+        discount = (checkoutTotal * coupon.discount_value) / 100;
+      } else {
+        discount = coupon.discount_value;
+      }
+
+      // Apply max discount cap
+      if (coupon.max_discount_amount && discount > coupon.max_discount_amount) {
+        discount = coupon.max_discount_amount;
+      }
+
+      // Don't allow discount more than order total
+      discount = Math.min(discount, subtotalWithShipping);
+
+      setAppliedCoupon({
+        id: coupon.id,
+        code: coupon.code,
+        discount_type: coupon.discount_type as 'percentage' | 'fixed',
+        discount_value: coupon.discount_value,
+        max_discount_amount: coupon.max_discount_amount,
+      });
+      setDiscountAmount(discount);
+      toast.success(`Coupon applied! You save ₹${discount.toLocaleString()}`);
+    } catch (error) {
+      console.error('Coupon error:', error);
+      toast.error('Failed to apply coupon');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponCode('');
+    toast.info('Coupon removed');
+  };
 
   const createOrder = async (paymentId?: string, status: string = 'pending') => {
     const addressData = form.getValues();
@@ -260,6 +361,8 @@ export default function Checkout() {
       status: status,
       payment_method: paymentMethod,
       payment_id: paymentId || null,
+      discount_amount: discountAmount,
+      coupon_code: appliedCoupon?.code || null,
       shipping_address: {
         fullName: addressData.fullName,
         email: addressData.email,
@@ -306,6 +409,30 @@ export default function Checkout() {
       .insert(orderItems);
 
     if (itemsError) throw itemsError;
+
+    // Update coupon usage count if coupon was applied
+    if (appliedCoupon) {
+      // Get current count and increment
+      const { data: couponData } = await supabase
+        .from('coupons')
+        .select('used_count')
+        .eq('id', appliedCoupon.id)
+        .single();
+      
+      if (couponData) {
+        await supabase
+          .from('coupons')
+          .update({ used_count: (couponData.used_count || 0) + 1 })
+          .eq('id', appliedCoupon.id);
+      }
+      
+      // Track coupon usage
+      await supabase.from('coupon_usage').insert({
+        coupon_id: appliedCoupon.id,
+        user_id: user?.id || null,
+        order_id: order.id,
+      });
+    }
 
     // Store order ID in session for guest order tracking
     if (!user) {
@@ -604,6 +731,53 @@ export default function Checkout() {
                 </div>
               </Card>
 
+              {/* Coupon Code Section */}
+              <Card className="p-6">
+                <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Ticket className="h-5 w-5" />
+                  Apply Coupon
+                </h2>
+                
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                        <Check className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-800">{appliedCoupon.code}</p>
+                        <p className="text-sm text-green-600">
+                          {appliedCoupon.discount_type === 'percentage' 
+                            ? `${appliedCoupon.discount_value}% off`
+                            : `₹${appliedCoupon.discount_value} off`}
+                          {appliedCoupon.max_discount_amount && ` (Max ₹${appliedCoupon.max_discount_amount})`}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={removeCoupon}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="uppercase"
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading}
+                    >
+                      {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                    </Button>
+                  </div>
+                )}
+              </Card>
+
               {/* Payment Method */}
               <Card className="p-6">
                 <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
@@ -811,13 +985,29 @@ export default function Checkout() {
                     <span className="text-muted-foreground">Shipping</span>
                     <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
                   </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span className="flex items-center gap-1">
+                        <Ticket className="h-3 w-3" />
+                        Discount ({appliedCoupon?.code})
+                      </span>
+                      <span>-₹{discountAmount.toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
 
                 <Separator className="my-4" />
 
                 <div className="flex justify-between font-semibold text-lg mb-6">
                   <span>Total</span>
-                  <span>₹{finalTotal.toLocaleString()}</span>
+                  <div className="text-right">
+                    {discountAmount > 0 && (
+                      <span className="text-sm line-through text-muted-foreground mr-2">
+                        ₹{subtotalWithShipping.toLocaleString()}
+                      </span>
+                    )}
+                    <span>₹{finalTotal.toLocaleString()}</span>
+                  </div>
                 </div>
 
                 <Button
