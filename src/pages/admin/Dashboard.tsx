@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Package, FolderTree, ShoppingCart, DollarSign, TrendingUp, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Package, FolderTree, ShoppingCart, DollarSign, TrendingUp, Users, ArrowUpRight, ArrowDownRight, CreditCard, Smartphone, Wallet, Building2, Banknote, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 interface Stats {
   totalProducts: number;
@@ -34,6 +36,15 @@ interface TopProduct {
   revenue: number;
 }
 
+interface PaymentGatewayStatus {
+  name: string;
+  key: string;
+  enabled: boolean;
+  icon: any;
+  color: string;
+  bgColor: string;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({
     totalProducts: 0,
@@ -49,9 +60,11 @@ export default function AdminDashboard() {
   const [ordersByDay, setOrdersByDay] = useState<OrdersByDay[]>([]);
   const [ordersByStatus, setOrdersByStatus] = useState<OrdersByStatus[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [paymentGateways, setPaymentGateways] = useState<PaymentGatewayStatus[]>([]);
 
   useEffect(() => {
     fetchStats();
+    fetchPaymentSettings();
   }, []);
 
   const fetchStats = async () => {
@@ -132,6 +145,79 @@ export default function AdminDashboard() {
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPaymentSettings = async () => {
+    try {
+      const { data } = await supabase
+        .from('payment_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setPaymentGateways([
+          { 
+            name: 'Razorpay', 
+            key: 'razorpay',
+            enabled: data.razorpay_enabled ?? false, 
+            icon: CreditCard, 
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-100'
+          },
+          { 
+            name: 'UPI Direct', 
+            key: 'upi',
+            enabled: data.upi_enabled ?? false, 
+            icon: Smartphone, 
+            color: 'text-green-600',
+            bgColor: 'bg-green-100'
+          },
+          { 
+            name: 'Paytm', 
+            key: 'paytm',
+            enabled: (data as any).paytm_enabled ?? false, 
+            icon: Wallet, 
+            color: 'text-sky-600',
+            bgColor: 'bg-sky-100'
+          },
+          { 
+            name: 'Cashfree', 
+            key: 'cashfree',
+            enabled: (data as any).cashfree_enabled ?? false, 
+            icon: Banknote, 
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-100'
+          },
+          { 
+            name: 'BharatPay', 
+            key: 'bharatpay',
+            enabled: (data as any).bharatpay_enabled ?? false, 
+            icon: Building2, 
+            color: 'text-orange-600',
+            bgColor: 'bg-orange-100'
+          },
+          { 
+            name: 'PayYou Biz', 
+            key: 'payyou',
+            enabled: (data as any).payyou_enabled ?? false, 
+            icon: Wallet, 
+            color: 'text-teal-600',
+            bgColor: 'bg-teal-100'
+          },
+          { 
+            name: 'PhonePe', 
+            key: 'phonepe',
+            enabled: (data as any).phonepe_enabled ?? false, 
+            icon: Smartphone, 
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-100'
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching payment settings:', error);
     }
   };
 
@@ -233,6 +319,65 @@ export default function AdminDashboard() {
             </Card>
           ))}
         </div>
+
+        {/* Payment Gateways Status */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Payment Gateways</CardTitle>
+              <CardDescription>Active payment methods for customers</CardDescription>
+            </div>
+            <Link to="/admin/settings">
+              <Button variant="outline" size="sm">Manage</Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {paymentGateways.length === 0 ? (
+              <div className="h-20 bg-muted animate-pulse rounded" />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                {paymentGateways.map((gateway) => (
+                  <div 
+                    key={gateway.key} 
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      gateway.enabled 
+                        ? 'border-green-200 bg-green-50' 
+                        : 'border-muted bg-muted/30 opacity-60'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`p-2 rounded-lg ${gateway.bgColor}`}>
+                        <gateway.icon className={`h-5 w-5 ${gateway.color}`} />
+                      </div>
+                      <span className="text-xs font-medium text-center">{gateway.name}</span>
+                      <div className="flex items-center gap-1">
+                        {gateway.enabled ? (
+                          <>
+                            <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                            <span className="text-[10px] text-green-600 font-medium">Active</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">Off</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 pt-4 border-t flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {paymentGateways.filter(g => g.enabled).length} of {paymentGateways.length} gateways active
+              </p>
+              <Badge variant={paymentGateways.filter(g => g.enabled).length > 0 ? "default" : "secondary"}>
+                {paymentGateways.filter(g => g.enabled).length > 0 ? 'Payments Enabled' : 'COD Only'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
