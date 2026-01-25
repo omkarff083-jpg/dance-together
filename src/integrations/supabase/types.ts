@@ -281,45 +281,57 @@ export type Database = {
           bharatpay_display_name: string | null
           bharatpay_enabled: boolean | null
           bharatpay_merchant_id: string | null
+          bharatpay_shipping_charge: number | null
           cashfree_app_id: string | null
           cashfree_display_description: string | null
           cashfree_display_name: string | null
           cashfree_enabled: boolean | null
           cashfree_secret_key: string | null
+          cashfree_shipping_charge: number | null
           cod_display_description: string | null
           cod_display_name: string | null
           cod_enabled: boolean | null
+          cod_shipping_charge: number | null
+          free_shipping_threshold: number | null
           id: string
           paytm_display_description: string | null
           paytm_display_name: string | null
           paytm_enabled: boolean | null
           paytm_merchant_id: string | null
           paytm_merchant_key: string | null
+          paytm_shipping_charge: number | null
           payyou_api_key: string | null
           payyou_display_description: string | null
           payyou_display_name: string | null
           payyou_enabled: boolean | null
           payyou_merchant_id: string | null
+          payyou_shipping_charge: number | null
           phonepe_display_description: string | null
           phonepe_display_name: string | null
           phonepe_enabled: boolean | null
           phonepe_merchant_id: string | null
           phonepe_salt_index: string | null
           phonepe_salt_key: string | null
+          phonepe_shipping_charge: number | null
           razorpay_display_description: string | null
           razorpay_display_name: string | null
           razorpay_enabled: boolean | null
           razorpay_key_id: string | null
           razorpay_key_secret: string | null
+          razorpay_shipping_charge: number | null
           razorpay_upi_display_description: string | null
           razorpay_upi_display_name: string | null
           razorpay_upi_enabled: boolean | null
           razorpay_upi_id: string | null
+          razorpay_upi_shipping_charge: number | null
+          shipping_charge: number | null
+          shipping_enabled: boolean | null
           updated_at: string
           upi_display_description: string | null
           upi_display_name: string | null
           upi_enabled: boolean | null
           upi_id: string | null
+          upi_shipping_charge: number | null
         }
         Insert: {
           bharatpay_api_key?: string | null
@@ -327,45 +339,57 @@ export type Database = {
           bharatpay_display_name?: string | null
           bharatpay_enabled?: boolean | null
           bharatpay_merchant_id?: string | null
+          bharatpay_shipping_charge?: number | null
           cashfree_app_id?: string | null
           cashfree_display_description?: string | null
           cashfree_display_name?: string | null
           cashfree_enabled?: boolean | null
           cashfree_secret_key?: string | null
+          cashfree_shipping_charge?: number | null
           cod_display_description?: string | null
           cod_display_name?: string | null
           cod_enabled?: boolean | null
+          cod_shipping_charge?: number | null
+          free_shipping_threshold?: number | null
           id?: string
           paytm_display_description?: string | null
           paytm_display_name?: string | null
           paytm_enabled?: boolean | null
           paytm_merchant_id?: string | null
           paytm_merchant_key?: string | null
+          paytm_shipping_charge?: number | null
           payyou_api_key?: string | null
           payyou_display_description?: string | null
           payyou_display_name?: string | null
           payyou_enabled?: boolean | null
           payyou_merchant_id?: string | null
+          payyou_shipping_charge?: number | null
           phonepe_display_description?: string | null
           phonepe_display_name?: string | null
           phonepe_enabled?: boolean | null
           phonepe_merchant_id?: string | null
           phonepe_salt_index?: string | null
           phonepe_salt_key?: string | null
+          phonepe_shipping_charge?: number | null
           razorpay_display_description?: string | null
           razorpay_display_name?: string | null
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
           razorpay_key_secret?: string | null
+          razorpay_shipping_charge?: number | null
           razorpay_upi_display_description?: string | null
           razorpay_upi_display_name?: string | null
           razorpay_upi_enabled?: boolean | null
           razorpay_upi_id?: string | null
+          razorpay_upi_shipping_charge?: number | null
+          shipping_charge?: number | null
+          shipping_enabled?: boolean | null
           updated_at?: string
           upi_display_description?: string | null
           upi_display_name?: string | null
           upi_enabled?: boolean | null
           upi_id?: string | null
+          upi_shipping_charge?: number | null
         }
         Update: {
           bharatpay_api_key?: string | null
@@ -373,45 +397,57 @@ export type Database = {
           bharatpay_display_name?: string | null
           bharatpay_enabled?: boolean | null
           bharatpay_merchant_id?: string | null
+          bharatpay_shipping_charge?: number | null
           cashfree_app_id?: string | null
           cashfree_display_description?: string | null
           cashfree_display_name?: string | null
           cashfree_enabled?: boolean | null
           cashfree_secret_key?: string | null
+          cashfree_shipping_charge?: number | null
           cod_display_description?: string | null
           cod_display_name?: string | null
           cod_enabled?: boolean | null
+          cod_shipping_charge?: number | null
+          free_shipping_threshold?: number | null
           id?: string
           paytm_display_description?: string | null
           paytm_display_name?: string | null
           paytm_enabled?: boolean | null
           paytm_merchant_id?: string | null
           paytm_merchant_key?: string | null
+          paytm_shipping_charge?: number | null
           payyou_api_key?: string | null
           payyou_display_description?: string | null
           payyou_display_name?: string | null
           payyou_enabled?: boolean | null
           payyou_merchant_id?: string | null
+          payyou_shipping_charge?: number | null
           phonepe_display_description?: string | null
           phonepe_display_name?: string | null
           phonepe_enabled?: boolean | null
           phonepe_merchant_id?: string | null
           phonepe_salt_index?: string | null
           phonepe_salt_key?: string | null
+          phonepe_shipping_charge?: number | null
           razorpay_display_description?: string | null
           razorpay_display_name?: string | null
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
           razorpay_key_secret?: string | null
+          razorpay_shipping_charge?: number | null
           razorpay_upi_display_description?: string | null
           razorpay_upi_display_name?: string | null
           razorpay_upi_enabled?: boolean | null
           razorpay_upi_id?: string | null
+          razorpay_upi_shipping_charge?: number | null
+          shipping_charge?: number | null
+          shipping_enabled?: boolean | null
           updated_at?: string
           upi_display_description?: string | null
           upi_display_name?: string | null
           upi_enabled?: boolean | null
           upi_id?: string | null
+          upi_shipping_charge?: number | null
         }
         Relationships: []
       }
@@ -429,6 +465,7 @@ export type Database = {
           name: string
           price: number
           sale_price: number | null
+          shipping_charge: number | null
           sizes: string[] | null
           slug: string
           stock: number
@@ -447,6 +484,7 @@ export type Database = {
           name: string
           price: number
           sale_price?: number | null
+          shipping_charge?: number | null
           sizes?: string[] | null
           slug: string
           stock?: number
@@ -465,6 +503,7 @@ export type Database = {
           name?: string
           price?: number
           sale_price?: number | null
+          shipping_charge?: number | null
           sizes?: string[] | null
           slug?: string
           stock?: number
