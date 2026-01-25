@@ -389,6 +389,39 @@ export type Database = {
           },
         ]
       }
+      serviceable_pincodes: {
+        Row: {
+          city: string | null
+          cod_available: boolean | null
+          created_at: string
+          delivery_days: number | null
+          id: string
+          is_active: boolean | null
+          pincode: string
+          state: string | null
+        }
+        Insert: {
+          city?: string | null
+          cod_available?: boolean | null
+          created_at?: string
+          delivery_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          pincode: string
+          state?: string | null
+        }
+        Update: {
+          city?: string | null
+          cod_available?: boolean | null
+          created_at?: string
+          delivery_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          pincode?: string
+          state?: string | null
+        }
+        Relationships: []
+      }
       support_conversations: {
         Row: {
           created_at: string

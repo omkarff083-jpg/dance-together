@@ -15,6 +15,7 @@ import { useCart, BuyNowItem } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PincodeChecker } from '@/components/checkout/PincodeChecker';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +84,14 @@ export default function Checkout() {
   const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
   const [utrNumber, setUtrNumber] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [pincodeVerified, setPincodeVerified] = useState(false);
+  const [pincodeInfo, setPincodeInfo] = useState<{
+    pincode: string;
+    city: string | null;
+    state: string | null;
+    delivery_days: number | null;
+    cod_available: boolean | null;
+  } | null>(null);
   
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
@@ -458,10 +467,11 @@ export default function Checkout() {
   const isPayYouAvailable = paymentSettings?.payyou_enabled;
   const isPhonePeAvailable = paymentSettings?.phonepe_enabled;
   
-  // Check if COD is available globally and for all products in cart
+  // Check if COD is available globally, for all products, and for the pincode
   const isGlobalCodEnabled = paymentSettings?.cod_enabled !== false;
   const allProductsAllowCod = checkoutItems.every(item => (item.product as any)?.cod_available !== false);
-  const isCodAvailable = isGlobalCodEnabled && allProductsAllowCod;
+  const isPincodeCodAvailable = pincodeInfo?.cod_available !== false;
+  const isCodAvailable = isGlobalCodEnabled && allProductsAllowCod && isPincodeCodAvailable;
 
   return (
     <Layout>
@@ -509,6 +519,25 @@ export default function Checkout() {
                     )}
                   </div>
 
+                  {/* Pincode Checker */}
+                  <div className="pt-2">
+                    <PincodeChecker
+                      initialPincode={form.watch('pincode')}
+                      onPincodeVerified={(info) => {
+                        if (info) {
+                          setPincodeVerified(true);
+                          setPincodeInfo(info);
+                          form.setValue('pincode', info.pincode);
+                          if (info.city) form.setValue('city', info.city);
+                          if (info.state) form.setValue('state', info.state);
+                        } else {
+                          setPincodeVerified(false);
+                          setPincodeInfo(null);
+                        }
+                      }}
+                    />
+                  </div>
+
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="city">City</Label>
@@ -526,12 +555,21 @@ export default function Checkout() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="pincode">Pincode</Label>
-                      <Input id="pincode" {...form.register('pincode')} />
+                      <Input id="pincode" {...form.register('pincode')} readOnly className="bg-muted" />
                       {form.formState.errors.pincode && (
                         <p className="text-sm text-destructive">{form.formState.errors.pincode.message}</p>
                       )}
                     </div>
                   </div>
+
+                  {/* Delivery not available warning */}
+                  {form.watch('pincode')?.length === 6 && !pincodeVerified && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <p className="text-sm text-destructive">
+                        Please verify your pincode above to check delivery availability before placing order.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </Card>
 
@@ -742,6 +780,12 @@ export default function Checkout() {
                     <span className="text-muted-foreground">Shipping</span>
                     <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
                   </div>
+                  {pincodeInfo?.delivery_days && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Estimated Delivery</span>
+                      <span>{pincodeInfo.delivery_days} days</span>
+                    </div>
+                  )}
                 </div>
 
                 <Separator className="my-4" />
@@ -754,12 +798,13 @@ export default function Checkout() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading || !paymentMethod}
+                  disabled={loading || !paymentMethod || !pincodeVerified}
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : null}
-                  {paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
+                  {!pincodeVerified ? 'Verify Pincode First' :
+                   paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
                    paymentMethod === 'paytm' ? 'Pay with Paytm' :
                    paymentMethod === 'cashfree' ? 'Pay with Cashfree' :
                    paymentMethod === 'phonepe' ? 'Pay with PhonePe' :
@@ -767,6 +812,12 @@ export default function Checkout() {
                    paymentMethod === 'payyou' ? 'Pay with PayYou' :
                    paymentMethod === 'upi' ? 'Generate UPI QR' : 'Place Order (COD)'}
                 </Button>
+
+                {!pincodeVerified && (
+                  <p className="text-xs text-center text-muted-foreground mt-2">
+                    Please verify delivery availability for your pincode
+                  </p>
+                )}
               </Card>
             </div>
           </div>
