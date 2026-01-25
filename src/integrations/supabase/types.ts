@@ -224,6 +224,7 @@ export type Database = {
         Row: {
           coupon_code: string | null
           created_at: string
+          customer_ip: string | null
           discount_amount: number | null
           guest_email: string | null
           guest_name: string | null
@@ -240,6 +241,7 @@ export type Database = {
         Insert: {
           coupon_code?: string | null
           created_at?: string
+          customer_ip?: string | null
           discount_amount?: number | null
           guest_email?: string | null
           guest_name?: string | null
@@ -256,6 +258,7 @@ export type Database = {
         Update: {
           coupon_code?: string | null
           created_at?: string
+          customer_ip?: string | null
           discount_amount?: number | null
           guest_email?: string | null
           guest_name?: string | null
