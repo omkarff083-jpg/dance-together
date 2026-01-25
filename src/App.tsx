@@ -7,7 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { CustomerSupportChat } from "@/components/support/CustomerSupportChat";
 
 import Home from "./pages/Home";
-import Auth from "./pages/Auth";
+
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Categories from "./pages/Categories";
@@ -38,7 +38,7 @@ const App = () => (
           <CartProvider>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/auth" element={<Auth />} />
+              {/* Auth page removed - store is fully public */}
               <Route path="/products" element={<Products />} />
               <Route path="/product/:slug" element={<ProductDetail />} />
               <Route path="/categories" element={<Categories />} />
