@@ -1,21 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, Package, ArrowRight, Wallet, Building2, Ticket, X } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, ArrowLeft, Wallet, Building2, Ticket, X, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Layout } from '@/components/layout/Layout';
 import { useCart, BuyNowItem } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
 import {
   Dialog,
   DialogContent,
@@ -39,17 +35,15 @@ const numberToWords = (num: number): string => {
   return numberToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + numberToWords(num % 10000000) : '');
 };
 
-const addressSchema = z.object({
-  fullName: z.string().min(2, 'Name is required'),
-  email: z.string().email('Valid email is required'),
-  phone: z.string().min(10, 'Valid phone number is required'),
-  address: z.string().min(5, 'Address is required'),
-  city: z.string().min(2, 'City is required'),
-  state: z.string().min(2, 'State is required'),
-  pincode: z.string().min(6, 'Valid pincode is required'),
-});
-
-type AddressFormData = z.infer<typeof addressSchema>;
+interface AddressData {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
 
 interface PaymentSettings {
   razorpay_enabled: boolean;
@@ -69,7 +63,7 @@ declare global {
   }
 }
 
-export default function Checkout() {
+export default function CheckoutPayment() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -84,6 +78,7 @@ export default function Checkout() {
   const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
   const [utrNumber, setUtrNumber] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [addressData, setAddressData] = useState<AddressData | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{
     id: string;
@@ -98,71 +93,18 @@ export default function Checkout() {
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
 
-  const [pincodeLoading, setPincodeLoading] = useState(false);
-  
-  const form = useForm<AddressFormData>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: {
-      fullName: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-    },
-  });
-
-  // Background pincode lookup for auto-filling city and state
-  const lookupPincode = async (pincode: string) => {
-    if (pincode.length !== 6) return;
-    
-    setPincodeLoading(true);
-    
-    try {
-      // First try from our serviceable_pincodes table
-      const { data: localData } = await supabase
-        .from('serviceable_pincodes')
-        .select('city, state')
-        .eq('pincode', pincode)
-        .eq('is_active', true)
-        .maybeSingle();
-      
-      if (localData?.city && localData?.state) {
-        form.setValue('city', localData.city);
-        form.setValue('state', localData.state);
-        setPincodeLoading(false);
-        return;
-      }
-      
-      // Fallback to external API (India Post API via proxy)
-      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-      const apiData = await response.json();
-      
-      if (apiData?.[0]?.Status === 'Success' && apiData[0].PostOffice?.length > 0) {
-        const postOffice = apiData[0].PostOffice[0];
-        form.setValue('city', postOffice.District || postOffice.Name);
-        form.setValue('state', postOffice.State);
-      }
-    } catch (error) {
-      // Silent fail - don't block the order
-      console.log('Pincode lookup failed:', error);
-    } finally {
-      setPincodeLoading(false);
-    }
-  };
-
-  // Watch pincode changes for auto-fill
-  const watchedPincode = form.watch('pincode');
-  
+  // Load address data from session
   useEffect(() => {
-    if (watchedPincode?.length === 6 && /^\d{6}$/.test(watchedPincode)) {
-      lookupPincode(watchedPincode);
+    const savedAddress = sessionStorage.getItem('checkoutAddress');
+    if (!savedAddress) {
+      toast.error('Please fill in your address first');
+      navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout');
+      return;
     }
-  }, [watchedPincode]);
+    setAddressData(JSON.parse(savedAddress));
+  }, [navigate, isBuyNowMode]);
 
   useEffect(() => {
-    // Check for Buy Now mode
     if (isBuyNowMode) {
       const storedItem = sessionStorage.getItem('buyNowItem');
       if (storedItem) {
@@ -172,7 +114,6 @@ export default function Checkout() {
         return;
       }
     } else if (!user && items.length === 0) {
-      // For guests, check session storage for cart
       const guestCart = sessionStorage.getItem('guestCart');
       if (!guestCart) {
         navigate('/products');
@@ -190,10 +131,6 @@ export default function Checkout() {
     script.onload = () => setRazorpayLoaded(true);
     document.body.appendChild(script);
 
-    // Fetch user profile (if logged in) and payment settings
-    if (user) {
-      fetchProfile();
-    }
     fetchPaymentSettings();
 
     return () => {
@@ -212,7 +149,6 @@ export default function Checkout() {
     
     if (data) {
       setPaymentSettings(data as PaymentSettings);
-      // Set default payment method based on what's enabled (prioritize online payments)
       if (data.razorpay_enabled) {
         setPaymentMethod('razorpay');
       } else if ((data as any).paytm_enabled) {
@@ -237,23 +173,6 @@ export default function Checkout() {
     }
   };
 
-  const fetchProfile = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from('profiles')
-      .select('full_name, phone, address, email')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (data) {
-      if (data.full_name) form.setValue('fullName', data.full_name);
-      if (data.email) form.setValue('email', data.email);
-      if (data.phone) form.setValue('phone', data.phone);
-    }
-  };
-
-  // Calculate totals based on mode - moved up for use in welcome coupon logic
   const checkoutItems = isBuyNowMode && buyNowItem ? [buyNowItem] : items;
   const checkoutTotal = isBuyNowMode && buyNowItem
     ? (buyNowItem.product.sale_price || buyNowItem.product.price) * buyNowItem.quantity
@@ -269,7 +188,6 @@ export default function Checkout() {
     setWelcomeCouponChecked(true);
     
     try {
-      // Check if user has any previous orders
       const { data: previousOrders, error: orderError } = await supabase
         .from('orders')
         .select('id')
@@ -282,13 +200,11 @@ export default function Checkout() {
         return;
       }
 
-      // If user has previous orders, don't apply welcome coupon
       if (previousOrders && previousOrders.length > 0) {
         console.log('User has previous orders, not applying welcome coupon');
         return;
       }
 
-      // Check if welcome coupon exists and is valid
       const { data: welcomeCoupon, error: couponError } = await supabase
         .from('coupons')
         .select('*')
@@ -301,7 +217,6 @@ export default function Checkout() {
         return;
       }
 
-      // Validate coupon dates
       if (welcomeCoupon.valid_from && new Date(welcomeCoupon.valid_from) > new Date()) {
         return;
       }
@@ -309,15 +224,12 @@ export default function Checkout() {
         return;
       }
 
-      // Check usage limit
       if (welcomeCoupon.usage_limit && welcomeCoupon.used_count >= welcomeCoupon.usage_limit) {
         return;
       }
 
-      // Auto-apply the welcome coupon
       setCouponCode('WELCOME10');
       
-      // Calculate discount
       let discount = 0;
       if (welcomeCoupon.discount_type === 'percentage') {
         discount = (checkoutTotal * welcomeCoupon.discount_value) / 100;
@@ -325,12 +237,10 @@ export default function Checkout() {
         discount = welcomeCoupon.discount_value;
       }
 
-      // Apply max discount cap
       if (welcomeCoupon.max_discount_amount && discount > welcomeCoupon.max_discount_amount) {
         discount = welcomeCoupon.max_discount_amount;
       }
 
-      // Don't allow discount more than order total
       discount = Math.min(discount, subtotalWithShipping);
 
       setAppliedCoupon({
@@ -349,14 +259,12 @@ export default function Checkout() {
     }
   };
 
-  // Effect to auto-apply welcome coupon when checkout loads
   useEffect(() => {
     if (user && checkoutTotal > 0 && !welcomeCouponChecked) {
       checkAndApplyWelcomeCoupon();
     }
   }, [user, checkoutTotal, welcomeCouponChecked]);
 
-  // Apply coupon handler
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       toast.error('Please enter a coupon code');
@@ -380,7 +288,6 @@ export default function Checkout() {
         return;
       }
 
-      // Check validity dates
       if (coupon.valid_from && new Date(coupon.valid_from) > new Date()) {
         toast.error('This coupon is not yet active');
         setCouponLoading(false);
@@ -393,21 +300,18 @@ export default function Checkout() {
         return;
       }
 
-      // Check usage limit
       if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
         toast.error('This coupon has been fully redeemed');
         setCouponLoading(false);
         return;
       }
 
-      // Check minimum order amount
       if (coupon.min_order_amount && checkoutTotal < coupon.min_order_amount) {
         toast.error(`Minimum order amount is ₹${coupon.min_order_amount}`);
         setCouponLoading(false);
         return;
       }
 
-      // Calculate discount
       let discount = 0;
       if (coupon.discount_type === 'percentage') {
         discount = (checkoutTotal * coupon.discount_value) / 100;
@@ -415,12 +319,10 @@ export default function Checkout() {
         discount = coupon.discount_value;
       }
 
-      // Apply max discount cap
       if (coupon.max_discount_amount && discount > coupon.max_discount_amount) {
         discount = coupon.max_discount_amount;
       }
 
-      // Don't allow discount more than order total
       discount = Math.min(discount, subtotalWithShipping);
 
       setAppliedCoupon({
@@ -448,9 +350,8 @@ export default function Checkout() {
   };
 
   const createOrder = async (paymentId?: string, status: string = 'pending') => {
-    const addressData = form.getValues();
+    if (!addressData) throw new Error('Address data missing');
     
-    // Create order - support both authenticated and guest users
     const orderData: any = {
       total_amount: finalTotal,
       status: status,
@@ -469,7 +370,6 @@ export default function Checkout() {
       },
     };
 
-    // Add user_id only if logged in, otherwise store guest info
     if (user) {
       orderData.user_id = user.id;
     } else {
@@ -487,7 +387,6 @@ export default function Checkout() {
 
     if (orderError) throw orderError;
 
-    // Create order items
     const orderItems = checkoutItems.map(item => ({
       order_id: order.id,
       product_id: item.product_id,
@@ -505,9 +404,7 @@ export default function Checkout() {
 
     if (itemsError) throw itemsError;
 
-    // Update coupon usage count if coupon was applied
     if (appliedCoupon) {
-      // Get current count and increment
       const { data: couponData } = await supabase
         .from('coupons')
         .select('used_count')
@@ -521,7 +418,6 @@ export default function Checkout() {
           .eq('id', appliedCoupon.id);
       }
       
-      // Track coupon usage
       await supabase.from('coupon_usage').insert({
         coupon_id: appliedCoupon.id,
         user_id: user?.id || null,
@@ -529,7 +425,6 @@ export default function Checkout() {
       });
     }
 
-    // Store order ID in session for guest order tracking
     if (!user) {
       sessionStorage.setItem('guestOrderId', order.id);
       sessionStorage.setItem('guestOrderEmail', addressData.email);
@@ -539,6 +434,7 @@ export default function Checkout() {
   };
 
   const clearCheckoutItems = async () => {
+    sessionStorage.removeItem('checkoutAddress');
     if (isBuyNowMode) {
       sessionStorage.removeItem('buyNowItem');
       setBuyNowItem(null);
@@ -556,9 +452,8 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      // Create Razorpay order via edge function
       const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
-        body: { amount: finalTotal * 100 }, // Amount in paise
+        body: { amount: finalTotal * 100 },
       });
 
       if (error) throw error;
@@ -572,7 +467,6 @@ export default function Checkout() {
         order_id: data.order.id,
         handler: async (response: any) => {
           try {
-            // Verify payment
             const { error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
               body: {
                 razorpay_order_id: response.razorpay_order_id,
@@ -583,7 +477,6 @@ export default function Checkout() {
 
             if (verifyError) throw verifyError;
 
-            // Payment verified - now create confirmed order
             await createOrder(response.razorpay_payment_id, 'confirmed');
             await clearCheckoutItems();
             
@@ -596,15 +489,14 @@ export default function Checkout() {
         },
         modal: {
           ondismiss: () => {
-            // User closed payment window without completing payment
             toast.error('Payment cancelled. Order not placed.');
             setLoading(false);
           },
         },
         prefill: {
-          name: form.getValues('fullName'),
-          contact: form.getValues('phone'),
-          email: form.getValues('email') || user?.email,
+          name: addressData?.fullName,
+          contact: addressData?.phone,
+          email: addressData?.email || user?.email,
         },
         theme: {
           color: '#f97316',
@@ -651,7 +543,6 @@ export default function Checkout() {
 
   const confirmUpiPayment = async (withUtr?: boolean) => {
     if (withUtr && pendingOrderId && utrNumber.trim()) {
-      // Update order with UTR number - this verifies the payment
       await supabase
         .from('orders')
         .update({ payment_id: `UTR:${utrNumber.trim()}`, status: 'pending' })
@@ -661,8 +552,6 @@ export default function Checkout() {
       setUtrNumber('');
       setShowSuccessDialog(true);
     } else {
-      // No UTR provided - user wants to verify later
-      // Keep order as awaiting_payment
       await clearCheckoutItems();
       setShowUpiDialog(false);
       setUtrNumber('');
@@ -670,22 +559,18 @@ export default function Checkout() {
     }
   };
 
-  // Handle UPI dialog close - cancel order if not completed
   const handleUpiDialogClose = async (open: boolean) => {
     if (!open && pendingOrderId) {
-      // User closed dialog without confirming payment - cancel the order
       await supabase
         .from('orders')
         .update({ status: 'cancelled' })
         .eq('id', pendingOrderId);
       
-      // Also delete order items
       await supabase
         .from('order_items')
         .delete()
         .eq('order_id', pendingOrderId);
       
-      // Reverse coupon usage if applied
       if (appliedCoupon) {
         const { data: couponData } = await supabase
           .from('coupons')
@@ -717,7 +602,6 @@ export default function Checkout() {
     navigate('/orders');
   };
 
-  // UPI deep link generator with auto-filled amount
   const openUpiApp = (app: string) => {
     if (!paymentSettings?.upi_id) return;
     
@@ -726,26 +610,27 @@ export default function Checkout() {
     const name = encodeURIComponent('LUXE Store');
     const note = encodeURIComponent('Order Payment');
     
-    // Standard UPI deep link format with amount pre-filled
     const upiLink = `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
     
-    // Open the UPI link - this will trigger app chooser on mobile
     window.location.href = upiLink;
     
     toast.info('Opening UPI app with amount ₹' + finalTotal);
   };
 
-  const handleSubmit = async (data: AddressFormData) => {
+  const handlePayment = async () => {
+    if (!addressData) {
+      toast.error('Address data missing');
+      navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout');
+      return;
+    }
+
     if (paymentMethod === 'razorpay') {
       await handleRazorpayPayment();
     } else if (paymentMethod === 'upi') {
       await handleUpiPayment();
     } else if (['paytm', 'cashfree', 'phonepe', 'bharatpay', 'payyou'].includes(paymentMethod)) {
-      // For other payment gateways - these need proper API integration
-      // Order should only be confirmed after payment is received from gateway
       toast.info(`${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} integration is coming soon. Please use another payment method.`);
     } else {
-      // COD order - confirm immediately as no payment needed upfront
       setLoading(true);
       try {
         await createOrder(undefined, 'confirmed');
@@ -767,9 +652,8 @@ export default function Checkout() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
   };
 
-  // Allow checkout for both guests and logged-in users
   const hasItems = isBuyNowMode ? !!buyNowItem : (user ? items.length > 0 : true);
-  if (!hasItems) {
+  if (!hasItems || !addressData) {
     return null;
   }
 
@@ -781,7 +665,6 @@ export default function Checkout() {
   const isPayYouAvailable = paymentSettings?.payyou_enabled;
   const isPhonePeAvailable = paymentSettings?.phonepe_enabled;
   
-  // Check if COD is available globally and for all products
   const isGlobalCodEnabled = paymentSettings?.cod_enabled !== false;
   const allProductsAllowCod = checkoutItems.every(item => (item.product as any)?.cod_available !== false);
   const isCodAvailable = isGlobalCodEnabled && allProductsAllowCod;
@@ -789,395 +672,357 @@ export default function Checkout() {
   return (
     <Layout>
       <div className="container py-8">
-        <h1 className="font-display text-3xl font-bold mb-8">Checkout</h1>
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center gap-4 mb-8">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
+              <Check className="h-4 w-4" />
+            </div>
+            <span className="text-muted-foreground">Address</span>
+          </div>
+          <div className="w-12 h-0.5 bg-primary" />
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+              2
+            </div>
+            <span className="font-medium">Payment</span>
+          </div>
+        </div>
 
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Shipping Address */}
-            <div className="lg:col-span-2 space-y-6">
-              <Card className="p-6">
-                <h2 className="font-semibold text-lg mb-4">Shipping Address</h2>
-                
-                <div className="grid gap-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input id="fullName" {...form.register('fullName')} />
-                      {form.formState.errors.fullName && (
-                        <p className="text-sm text-destructive">{form.formState.errors.fullName.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" type="email" {...form.register('email')} />
-                      {form.formState.errors.email && (
-                        <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-                      )}
-                    </div>
+        <div className="flex items-center gap-4 mb-8">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+            <CreditCard className="h-8 w-8" />
+            Payment
+          </h1>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Delivery Address Summary */}
+            <Card className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-5 w-5 text-green-600" />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" {...form.register('phone')} />
-                    {form.formState.errors.phone && (
-                      <p className="text-sm text-destructive">{form.formState.errors.phone.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input id="address" {...form.register('address')} />
-                    {form.formState.errors.address && (
-                      <p className="text-sm text-destructive">{form.formState.errors.address.message}</p>
-                    )}
-                  </div>
-
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pincode">Pincode</Label>
-                      <div className="relative">
-                        <Input 
-                          id="pincode" 
-                          {...form.register('pincode')} 
-                          placeholder="Enter pincode"
-                          maxLength={6}
-                        />
-                        {pincodeLoading && (
-                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                        )}
-                      </div>
-                      {form.formState.errors.pincode && (
-                        <p className="text-sm text-destructive">{form.formState.errors.pincode.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input 
-                        id="city" 
-                        {...form.register('city')} 
-                        placeholder={pincodeLoading ? "Loading..." : "City"}
-                      />
-                      {form.formState.errors.city && (
-                        <p className="text-sm text-destructive">{form.formState.errors.city.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="state">State</Label>
-                      <Input 
-                        id="state" 
-                        {...form.register('state')} 
-                        placeholder={pincodeLoading ? "Loading..." : "State"}
-                      />
-                      {form.formState.errors.state && (
-                        <p className="text-sm text-destructive">{form.formState.errors.state.message}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Coupon Code Section */}
-              <Card className="p-6">
-                <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Ticket className="h-5 w-5" />
-                  Apply Coupon
-                </h2>
-                
-                {appliedCoupon ? (
-                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                        <Check className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-green-800">{appliedCoupon.code}</p>
-                        <p className="text-sm text-green-600">
-                          {appliedCoupon.discount_type === 'percentage' 
-                            ? `${appliedCoupon.discount_value}% off`
-                            : `₹${appliedCoupon.discount_value} off`}
-                          {appliedCoupon.max_discount_amount && ` (Max ₹${appliedCoupon.max_discount_amount})`}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={removeCoupon}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter coupon code"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      className="uppercase"
-                    />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={handleApplyCoupon}
-                      disabled={couponLoading}
-                    >
-                      {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                    </Button>
-                  </div>
-                )}
-              </Card>
-
-              {/* Payment Method */}
-              <Card className="p-6">
-                <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
-                
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
-                  {/* Razorpay Option */}
-                  {isRazorpayAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="razorpay" id="razorpay" />
-                      <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Pay Online (Razorpay)</p>
-                            <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking, Wallets</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-
-                  {/* Paytm Option */}
-                  {isPaytmAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="paytm" id="paytm" />
-                      <Label htmlFor="paytm" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
-                            <Wallet className="h-5 w-5 text-sky-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Paytm</p>
-                            <p className="text-sm text-muted-foreground">Paytm Wallet, UPI, Cards & Net Banking</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-
-                  {/* Cashfree Option */}
-                  {isCashfreeAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="cashfree" id="cashfree" />
-                      <Label htmlFor="cashfree" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                            <Banknote className="h-5 w-5 text-purple-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Cashfree</p>
-                            <p className="text-sm text-muted-foreground">Fast & secure payments</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-
-                  {/* PhonePe Merchant Option */}
-                  {isPhonePeAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="phonepe" id="phonepe" />
-                      <Label htmlFor="phonepe" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                            <Smartphone className="h-5 w-5 text-indigo-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">PhonePe</p>
-                            <p className="text-sm text-muted-foreground">Pay via PhonePe Business</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-
-                  {/* BharatPay Option */}
-                  {isBharatPayAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="bharatpay" id="bharatpay" />
-                      <Label htmlFor="bharatpay" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-orange-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">BharatPay</p>
-                            <p className="text-sm text-muted-foreground">UPI & Bank payments</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-
-                  {/* PayYou Biz Option */}
-                  {isPayYouAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="payyou" id="payyou" />
-                      <Label htmlFor="payyou" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                            <Wallet className="h-5 w-5 text-teal-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">PayYou Biz</p>
-                            <p className="text-sm text-muted-foreground">Business payment solution</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-                  
-                  {/* UPI Option */}
-                  {isUpiAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="upi" id="upi" />
-                      <Label htmlFor="upi" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                            <QrCode className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Pay via UPI</p>
-                            <p className="text-sm text-muted-foreground">Scan QR code or pay to UPI ID</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-                  
-                  {/* COD Option - Only show if globally enabled AND all products allow COD */}
-                  {isCodAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                      <RadioGroupItem value="cod" id="cod" />
-                      <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                            <Banknote className="h-5 w-5 text-amber-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Cash on Delivery</p>
-                            <p className="text-sm text-muted-foreground">Pay when you receive your order</p>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                  )}
-                </RadioGroup>
-
-                {!isCodAvailable && !isRazorpayAvailable && !isUpiAvailable && !isPaytmAvailable && !isCashfreeAvailable && !isBharatPayAvailable && !isPayYouAvailable && !isPhonePeAvailable && (
-                  <p className="text-sm text-destructive mt-4">
-                    ⚠️ No payment methods available. Please contact support.
-                  </p>
-                )}
-
-                {!isCodAvailable && (isRazorpayAvailable || isUpiAvailable || isPaytmAvailable || isCashfreeAvailable || isBharatPayAvailable || isPayYouAvailable || isPhonePeAvailable) && (
-                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-700">
-                      💳 Cash on Delivery is not available for {!isGlobalCodEnabled ? 'this store' : 'some products in your cart'}. Please pay online.
+                  <div>
+                    <p className="font-medium">Delivering to</p>
+                    <p className="text-sm text-muted-foreground">
+                      {addressData.fullName}, {addressData.address}, {addressData.city}, {addressData.state} - {addressData.pincode}
                     </p>
                   </div>
-                )}
-              </Card>
-            </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
+                >
+                  Change
+                </Button>
+              </div>
+            </Card>
 
-            {/* Order Summary */}
-            <div>
-              <Card className="p-6 sticky top-24">
-                <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
-                
-                <div className="space-y-3 max-h-48 overflow-y-auto">
-                  {checkoutItems.map((item, index) => (
-                    <div key={isBuyNowMode ? `buynow-${index}` : (item as any).id} className="flex gap-3">
-                      <div className="w-12 h-12 rounded bg-secondary overflow-hidden flex-shrink-0">
-                        <img
-                          src={item.product?.images?.[0] || 'https://via.placeholder.com/48'}
-                          alt={item.product?.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.product?.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Qty: {item.quantity}
-                          {item.size && ` • Size: ${item.size}`}
-                          {item.color && ` • ${item.color}`}
-                        </p>
-                      </div>
-                      <p className="text-sm font-medium">
-                        ₹{((item.product?.sale_price || item.product?.price || 0) * item.quantity).toLocaleString()}
+            {/* Coupon Code Section */}
+            <Card className="p-6">
+              <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                <Ticket className="h-5 w-5" />
+                Apply Coupon
+              </h2>
+              
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                      <Check className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-800">{appliedCoupon.code}</p>
+                      <p className="text-sm text-green-600">
+                        {appliedCoupon.discount_type === 'percentage' 
+                          ? `${appliedCoupon.discount_value}% off`
+                          : `₹${appliedCoupon.discount_value} off`}
+                        {appliedCoupon.max_discount_amount && ` (Max ₹${appliedCoupon.max_discount_amount})`}
                       </p>
                     </div>
-                  ))}
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>₹{checkoutTotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
-                  </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span className="flex items-center gap-1">
-                        <Ticket className="h-3 w-3" />
-                        Discount ({appliedCoupon?.code})
-                      </span>
-                      <span>-₹{discountAmount.toLocaleString()}</span>
-                    </div>
-                  )}
+                  <Button variant="ghost" size="icon" onClick={removeCoupon}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <Separator className="my-4" />
-
-                <div className="flex justify-between font-semibold text-lg mb-6">
-                  <span>Total</span>
-                  <div className="text-right">
-                    {discountAmount > 0 && (
-                      <span className="text-sm line-through text-muted-foreground mr-2">
-                        ₹{subtotalWithShipping.toLocaleString()}
-                      </span>
-                    )}
-                    <span>₹{finalTotal.toLocaleString()}</span>
-                  </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    className="uppercase"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading}
+                  >
+                    {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                  </Button>
                 </div>
+              )}
+            </Card>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading || !paymentMethod}
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  {paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
-                   paymentMethod === 'paytm' ? 'Pay with Paytm' :
-                   paymentMethod === 'cashfree' ? 'Pay with Cashfree' :
-                   paymentMethod === 'phonepe' ? 'Pay with PhonePe' :
-                   paymentMethod === 'bharatpay' ? 'Pay with BharatPay' :
-                   paymentMethod === 'payyou' ? 'Pay with PayYou' :
-                   paymentMethod === 'upi' ? 'Generate UPI QR' : 'Place Order (COD)'}
-                </Button>
-              </Card>
-            </div>
+            {/* Payment Method */}
+            <Card className="p-6">
+              <h2 className="font-semibold text-lg mb-4">Select Payment Method</h2>
+              
+              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
+                {isRazorpayAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="razorpay" id="razorpay" />
+                    <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Pay Online (Razorpay)</p>
+                          <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking, Wallets</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+
+                {isPaytmAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="paytm" id="paytm" />
+                    <Label htmlFor="paytm" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <Wallet className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Paytm</p>
+                          <p className="text-sm text-muted-foreground">UPI, Wallet, Net Banking</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+
+                {isCashfreeAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="cashfree" id="cashfree" />
+                    <Label htmlFor="cashfree" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Cashfree</p>
+                          <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+
+                {isPhonePeAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="phonepe" id="phonepe" />
+                    <Label htmlFor="phonepe" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                          <Smartphone className="h-5 w-5 text-indigo-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">PhonePe</p>
+                          <p className="text-sm text-muted-foreground">UPI & Wallet payments</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+
+                {isBharatPayAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="bharatpay" id="bharatpay" />
+                    <Label htmlFor="bharatpay" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">BharatPay</p>
+                          <p className="text-sm text-muted-foreground">UPI & Bank payments</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+
+                {isPayYouAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="payyou" id="payyou" />
+                    <Label htmlFor="payyou" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+                          <Wallet className="h-5 w-5 text-teal-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">PayYou Biz</p>
+                          <p className="text-sm text-muted-foreground">Business payment solution</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+                
+                {isUpiAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="upi" id="upi" />
+                    <Label htmlFor="upi" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                          <QrCode className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Pay via UPI</p>
+                          <p className="text-sm text-muted-foreground">Scan QR code or pay to UPI ID</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+                
+                {isCodAvailable && (
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <RadioGroupItem value="cod" id="cod" />
+                    <Label htmlFor="cod" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                          <Banknote className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Cash on Delivery</p>
+                          <p className="text-sm text-muted-foreground">Pay when you receive your order</p>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                )}
+              </RadioGroup>
+
+              {!isCodAvailable && !isRazorpayAvailable && !isUpiAvailable && !isPaytmAvailable && !isCashfreeAvailable && !isBharatPayAvailable && !isPayYouAvailable && !isPhonePeAvailable && (
+                <p className="text-sm text-destructive mt-4">
+                  ⚠️ No payment methods available. Please contact support.
+                </p>
+              )}
+
+              {!isCodAvailable && (isRazorpayAvailable || isUpiAvailable || isPaytmAvailable || isCashfreeAvailable || isBharatPayAvailable || isPayYouAvailable || isPhonePeAvailable) && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-700">
+                    💳 Cash on Delivery is not available for {!isGlobalCodEnabled ? 'this store' : 'some products in your cart'}. Please pay online.
+                  </p>
+                </div>
+              )}
+            </Card>
           </div>
-        </form>
+
+          {/* Order Summary */}
+          <div>
+            <Card className="p-6 sticky top-24">
+              <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
+              
+              <div className="space-y-3 max-h-48 overflow-y-auto">
+                {checkoutItems.map((item, index) => (
+                  <div key={isBuyNowMode ? `buynow-${index}` : (item as any).id} className="flex gap-3">
+                    <div className="w-12 h-12 rounded bg-secondary overflow-hidden flex-shrink-0">
+                      <img
+                        src={item.product?.images?.[0] || 'https://via.placeholder.com/48'}
+                        alt={item.product?.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.product?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Qty: {item.quantity}
+                        {item.size && ` • Size: ${item.size}`}
+                        {item.color && ` • ${item.color}`}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium">
+                      ₹{((item.product?.sale_price || item.product?.price || 0) * item.quantity).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <Separator className="my-4" />
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>₹{checkoutTotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Ticket className="h-3 w-3" />
+                      Discount ({appliedCoupon?.code})
+                    </span>
+                    <span>-₹{discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+
+              <Separator className="my-4" />
+
+              <div className="flex justify-between font-semibold text-lg mb-6">
+                <span>Total</span>
+                <div className="text-right">
+                  {discountAmount > 0 && (
+                    <span className="text-sm line-through text-muted-foreground mr-2">
+                      ₹{subtotalWithShipping.toLocaleString()}
+                    </span>
+                  )}
+                  <span>₹{finalTotal.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <Button
+                onClick={handlePayment}
+                className="w-full"
+                size="lg"
+                disabled={loading || !paymentMethod}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
+                 paymentMethod === 'paytm' ? 'Pay with Paytm' :
+                 paymentMethod === 'cashfree' ? 'Pay with Cashfree' :
+                 paymentMethod === 'phonepe' ? 'Pay with PhonePe' :
+                 paymentMethod === 'bharatpay' ? 'Pay with BharatPay' :
+                 paymentMethod === 'payyou' ? 'Pay with PayYou' :
+                 paymentMethod === 'upi' ? 'Generate UPI QR' : 'Place Order (COD)'}
+              </Button>
+            </Card>
+          </div>
+        </div>
       </div>
 
-      {/* UPI Payment Dialog with App Redirect */}
+      {/* UPI Payment Dialog */}
       <Dialog open={showUpiDialog} onOpenChange={handleUpiDialogClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1188,13 +1033,11 @@ export default function Checkout() {
           </DialogHeader>
           
           <div className="space-y-5">
-            {/* Amount Display */}
             <div className="text-center py-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border">
               <p className="text-3xl font-bold text-primary">₹{finalTotal.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground mt-1">Rupees {numberToWords(finalTotal)} Only</p>
             </div>
 
-            {/* UPI App Buttons - Amount will be auto-filled */}
             <div className="space-y-3">
               <p className="text-sm font-medium text-center">Pay using UPI App (Amount auto-filled)</p>
               <div className="grid grid-cols-3 gap-2">
@@ -1264,7 +1107,6 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -1274,7 +1116,6 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* QR Code */}
             <div className="flex justify-center">
               <div className="bg-white p-3 rounded-xl shadow-md border">
                 <img 
@@ -1285,7 +1126,6 @@ export default function Checkout() {
               </div>
             </div>
             
-            {/* UPI ID with Copy */}
             <div className="flex items-center gap-2 bg-secondary p-3 rounded-lg">
               <span className="flex-1 font-mono text-xs text-center">{paymentSettings?.upi_id}</span>
               <Button
@@ -1298,7 +1138,6 @@ export default function Checkout() {
               </Button>
             </div>
 
-            {/* UTR Verification Section */}
             <div className="space-y-2">
               <p className="text-sm font-medium text-center">Enter UTR Number for Quick Verification</p>
               <div className="flex gap-2">
@@ -1315,7 +1154,6 @@ export default function Checkout() {
               </p>
             </div>
 
-            {/* Confirm Buttons */}
             <div className="space-y-2">
               <Button 
                 onClick={() => confirmUpiPayment(true)} 
@@ -1341,12 +1179,10 @@ export default function Checkout() {
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent className="sm:max-w-md">
           <div className="flex flex-col items-center py-6 space-y-6">
-            {/* Success Animation */}
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center animate-scale-in">
                 <CheckCircle className="h-12 w-12 text-green-600 animate-[bounce_1s_ease-in-out_1]" />
               </div>
-              {/* Confetti-like dots animation */}
               <div className="absolute inset-0 animate-fade-in">
                 <div className="absolute -top-2 left-1/2 w-2 h-2 rounded-full bg-yellow-400 animate-[ping_1s_ease-in-out_1]" />
                 <div className="absolute top-1/4 -right-2 w-2 h-2 rounded-full bg-blue-400 animate-[ping_1.2s_ease-in-out_1]" />
@@ -1355,50 +1191,17 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Success Text */}
-            <div className="text-center space-y-2 animate-fade-in">
-              <h2 className="text-2xl font-bold text-foreground">Payment Initiated!</h2>
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-green-600">Payment Received!</h2>
               <p className="text-muted-foreground">
-                Your order has been placed successfully
+                Your order has been placed successfully.
+                {utrNumber ? ' Payment will be verified shortly.' : ' We will verify your payment soon.'}
               </p>
             </div>
 
-            {/* Amount Paid */}
-            <div className="w-full bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Amount Paid</span>
-                <span className="text-xl font-bold text-green-700">₹{finalTotal.toLocaleString()}</span>
-              </div>
-            </div>
-
-            {/* Order Status Info */}
-            <div className="w-full space-y-3 animate-fade-in">
-              <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
-                <Package className="h-5 w-5 text-primary" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Order Processing</p>
-                  <p className="text-xs text-muted-foreground">We'll verify your payment shortly</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="w-full space-y-3 animate-fade-in">
-              <Button onClick={handleSuccessClose} className="w-full" size="lg">
-                View My Orders
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowSuccessDialog(false);
-                  navigate('/');
-                }} 
-                className="w-full"
-              >
-                Continue Shopping
-              </Button>
-            </div>
+            <Button onClick={handleSuccessClose} className="w-full" size="lg">
+              View My Orders
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
