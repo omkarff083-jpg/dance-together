@@ -47,6 +47,8 @@ interface AddressData {
 
 interface PaymentSettings {
   razorpay_enabled: boolean;
+  razorpay_display_name: string | null;
+  razorpay_display_description: string | null;
   razorpay_upi_enabled: boolean;
   razorpay_upi_id: string | null;
   razorpay_upi_display_name: string | null;
@@ -56,11 +58,23 @@ interface PaymentSettings {
   upi_display_name: string | null;
   upi_display_description: string | null;
   paytm_enabled: boolean;
+  paytm_display_name: string | null;
+  paytm_display_description: string | null;
   cashfree_enabled: boolean;
+  cashfree_display_name: string | null;
+  cashfree_display_description: string | null;
   bharatpay_enabled: boolean;
+  bharatpay_display_name: string | null;
+  bharatpay_display_description: string | null;
   payyou_enabled: boolean;
+  payyou_display_name: string | null;
+  payyou_display_description: string | null;
   phonepe_enabled: boolean;
+  phonepe_display_name: string | null;
+  phonepe_display_description: string | null;
   cod_enabled: boolean;
+  cod_display_name: string | null;
+  cod_display_description: string | null;
 }
 
 declare global {
@@ -164,7 +178,7 @@ export default function CheckoutPayment() {
   const fetchPaymentSettings = async () => {
     const { data } = await supabase
       .from('payment_settings')
-      .select('razorpay_enabled, razorpay_upi_enabled, razorpay_upi_id, razorpay_upi_display_name, razorpay_upi_display_description, upi_enabled, upi_id, upi_display_name, upi_display_description, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled, cod_enabled')
+      .select('razorpay_enabled, razorpay_display_name, razorpay_display_description, razorpay_upi_enabled, razorpay_upi_id, razorpay_upi_display_name, razorpay_upi_display_description, upi_enabled, upi_id, upi_display_name, upi_display_description, paytm_enabled, paytm_display_name, paytm_display_description, cashfree_enabled, cashfree_display_name, cashfree_display_description, bharatpay_enabled, bharatpay_display_name, bharatpay_display_description, payyou_enabled, payyou_display_name, payyou_display_description, phonepe_enabled, phonepe_display_name, phonepe_display_description, cod_enabled, cod_display_name, cod_display_description')
       .limit(1)
       .maybeSingle();
     
@@ -821,8 +835,8 @@ export default function CheckoutPayment() {
                           <CreditCard className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Pay Online (Razorpay)</p>
-                          <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking, Wallets</p>
+                          <p className="font-medium">{paymentSettings?.razorpay_display_name || 'Pay Online (Razorpay)'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.razorpay_display_description || 'Cards, UPI, Net Banking, Wallets'}</p>
                         </div>
                       </div>
                     </Label>
@@ -855,8 +869,8 @@ export default function CheckoutPayment() {
                           <Wallet className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Paytm</p>
-                          <p className="text-sm text-muted-foreground">UPI, Wallet, Net Banking</p>
+                          <p className="font-medium">{paymentSettings?.paytm_display_name || 'Paytm'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.paytm_display_description || 'UPI, Wallet, Net Banking'}</p>
                         </div>
                       </div>
                     </Label>
@@ -872,8 +886,8 @@ export default function CheckoutPayment() {
                           <CreditCard className="h-5 w-5 text-purple-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Cashfree</p>
-                          <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking</p>
+                          <p className="font-medium">{paymentSettings?.cashfree_display_name || 'Cashfree'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.cashfree_display_description || 'Cards, UPI, Net Banking'}</p>
                         </div>
                       </div>
                     </Label>
@@ -889,8 +903,8 @@ export default function CheckoutPayment() {
                           <Smartphone className="h-5 w-5 text-indigo-600" />
                         </div>
                         <div>
-                          <p className="font-medium">PhonePe</p>
-                          <p className="text-sm text-muted-foreground">UPI & Wallet payments</p>
+                          <p className="font-medium">{paymentSettings?.phonepe_display_name || 'PhonePe'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.phonepe_display_description || 'UPI & Wallet payments'}</p>
                         </div>
                       </div>
                     </Label>
@@ -906,8 +920,8 @@ export default function CheckoutPayment() {
                           <Building2 className="h-5 w-5 text-orange-600" />
                         </div>
                         <div>
-                          <p className="font-medium">BharatPay</p>
-                          <p className="text-sm text-muted-foreground">UPI & Bank payments</p>
+                          <p className="font-medium">{paymentSettings?.bharatpay_display_name || 'BharatPay'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.bharatpay_display_description || 'UPI & Bank payments'}</p>
                         </div>
                       </div>
                     </Label>
@@ -923,8 +937,8 @@ export default function CheckoutPayment() {
                           <Wallet className="h-5 w-5 text-teal-600" />
                         </div>
                         <div>
-                          <p className="font-medium">PayYou Biz</p>
-                          <p className="text-sm text-muted-foreground">Business payment solution</p>
+                          <p className="font-medium">{paymentSettings?.payyou_display_name || 'PayYou Biz'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.payyou_display_description || 'Business payment solution'}</p>
                         </div>
                       </div>
                     </Label>
@@ -957,8 +971,8 @@ export default function CheckoutPayment() {
                           <Banknote className="h-5 w-5 text-amber-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Cash on Delivery</p>
-                          <p className="text-sm text-muted-foreground">Pay when you receive your order</p>
+                          <p className="font-medium">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.cod_display_description || 'Pay when you receive your order'}</p>
                         </div>
                       </div>
                     </Label>

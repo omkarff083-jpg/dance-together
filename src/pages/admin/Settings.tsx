@@ -19,6 +19,8 @@ interface PaymentSettings {
   razorpay_enabled: boolean;
   razorpay_key_id: string;
   razorpay_key_secret: string;
+  razorpay_display_name: string;
+  razorpay_display_description: string;
   razorpay_upi_enabled: boolean;
   razorpay_upi_id: string;
   razorpay_upi_display_name: string;
@@ -26,20 +28,32 @@ interface PaymentSettings {
   paytm_enabled: boolean;
   paytm_merchant_id: string;
   paytm_merchant_key: string;
+  paytm_display_name: string;
+  paytm_display_description: string;
   cashfree_enabled: boolean;
   cashfree_app_id: string;
   cashfree_secret_key: string;
+  cashfree_display_name: string;
+  cashfree_display_description: string;
   bharatpay_enabled: boolean;
   bharatpay_merchant_id: string;
   bharatpay_api_key: string;
+  bharatpay_display_name: string;
+  bharatpay_display_description: string;
   payyou_enabled: boolean;
   payyou_merchant_id: string;
   payyou_api_key: string;
+  payyou_display_name: string;
+  payyou_display_description: string;
   phonepe_enabled: boolean;
   phonepe_merchant_id: string;
   phonepe_salt_key: string;
   phonepe_salt_index: string;
+  phonepe_display_name: string;
+  phonepe_display_description: string;
   cod_enabled: boolean;
+  cod_display_name: string;
+  cod_display_description: string;
 }
 
 export default function AdminSettings() {
@@ -55,6 +69,8 @@ export default function AdminSettings() {
     razorpay_enabled: false,
     razorpay_key_id: '',
     razorpay_key_secret: '',
+    razorpay_display_name: 'Pay Online (Razorpay)',
+    razorpay_display_description: 'Cards, UPI, Net Banking, Wallets',
     razorpay_upi_enabled: false,
     razorpay_upi_id: '',
     razorpay_upi_display_name: 'Razorpay UPI',
@@ -62,20 +78,32 @@ export default function AdminSettings() {
     paytm_enabled: false,
     paytm_merchant_id: '',
     paytm_merchant_key: '',
+    paytm_display_name: 'Paytm',
+    paytm_display_description: 'Pay via Paytm Wallet, UPI, Cards',
     cashfree_enabled: false,
     cashfree_app_id: '',
     cashfree_secret_key: '',
+    cashfree_display_name: 'Cashfree',
+    cashfree_display_description: 'Pay via Cards, UPI, Netbanking',
     bharatpay_enabled: false,
     bharatpay_merchant_id: '',
     bharatpay_api_key: '',
+    bharatpay_display_name: 'BharatPay',
+    bharatpay_display_description: 'Pay via UPI & Cards',
     payyou_enabled: false,
     payyou_merchant_id: '',
     payyou_api_key: '',
+    payyou_display_name: 'PayYou',
+    payyou_display_description: 'Quick & Secure Payment',
     phonepe_enabled: false,
     phonepe_merchant_id: '',
     phonepe_salt_key: '',
     phonepe_salt_index: '',
+    phonepe_display_name: 'PhonePe',
+    phonepe_display_description: 'Pay via PhonePe UPI',
     cod_enabled: true,
+    cod_display_name: 'Cash on Delivery',
+    cod_display_description: 'Pay when you receive your order',
   });
 
   useEffect(() => { fetchSettings(); }, []);
@@ -91,6 +119,8 @@ export default function AdminSettings() {
         razorpay_enabled: data.razorpay_enabled ?? false,
         razorpay_key_id: data.razorpay_key_id || '',
         razorpay_key_secret: data.razorpay_key_secret || '',
+        razorpay_display_name: (data as any).razorpay_display_name || 'Pay Online (Razorpay)',
+        razorpay_display_description: (data as any).razorpay_display_description || 'Cards, UPI, Net Banking, Wallets',
         razorpay_upi_enabled: (data as any).razorpay_upi_enabled ?? false,
         razorpay_upi_id: (data as any).razorpay_upi_id || '',
         razorpay_upi_display_name: (data as any).razorpay_upi_display_name || 'Razorpay UPI',
@@ -98,20 +128,32 @@ export default function AdminSettings() {
         paytm_enabled: (data as any).paytm_enabled ?? false,
         paytm_merchant_id: (data as any).paytm_merchant_id || '',
         paytm_merchant_key: (data as any).paytm_merchant_key || '',
+        paytm_display_name: (data as any).paytm_display_name || 'Paytm',
+        paytm_display_description: (data as any).paytm_display_description || 'Pay via Paytm Wallet, UPI, Cards',
         cashfree_enabled: (data as any).cashfree_enabled ?? false,
         cashfree_app_id: (data as any).cashfree_app_id || '',
         cashfree_secret_key: (data as any).cashfree_secret_key || '',
+        cashfree_display_name: (data as any).cashfree_display_name || 'Cashfree',
+        cashfree_display_description: (data as any).cashfree_display_description || 'Pay via Cards, UPI, Netbanking',
         bharatpay_enabled: (data as any).bharatpay_enabled ?? false,
         bharatpay_merchant_id: (data as any).bharatpay_merchant_id || '',
         bharatpay_api_key: (data as any).bharatpay_api_key || '',
+        bharatpay_display_name: (data as any).bharatpay_display_name || 'BharatPay',
+        bharatpay_display_description: (data as any).bharatpay_display_description || 'Pay via UPI & Cards',
         payyou_enabled: (data as any).payyou_enabled ?? false,
         payyou_merchant_id: (data as any).payyou_merchant_id || '',
         payyou_api_key: (data as any).payyou_api_key || '',
+        payyou_display_name: (data as any).payyou_display_name || 'PayYou',
+        payyou_display_description: (data as any).payyou_display_description || 'Quick & Secure Payment',
         phonepe_enabled: (data as any).phonepe_enabled ?? false,
         phonepe_merchant_id: (data as any).phonepe_merchant_id || '',
         phonepe_salt_key: (data as any).phonepe_salt_key || '',
         phonepe_salt_index: (data as any).phonepe_salt_index || '',
+        phonepe_display_name: (data as any).phonepe_display_name || 'PhonePe',
+        phonepe_display_description: (data as any).phonepe_display_description || 'Pay via PhonePe UPI',
         cod_enabled: (data as any).cod_enabled ?? true,
+        cod_display_name: (data as any).cod_display_name || 'Cash on Delivery',
+        cod_display_description: (data as any).cod_display_description || 'Pay when you receive your order',
       });
     }
     setLoading(false);
@@ -138,6 +180,8 @@ export default function AdminSettings() {
         razorpay_enabled: settings.razorpay_enabled,
         razorpay_key_id: settings.razorpay_key_id,
         razorpay_key_secret: settings.razorpay_key_secret,
+        razorpay_display_name: settings.razorpay_display_name,
+        razorpay_display_description: settings.razorpay_display_description,
         razorpay_upi_enabled: settings.razorpay_upi_enabled,
         razorpay_upi_id: settings.razorpay_upi_id,
         razorpay_upi_display_name: settings.razorpay_upi_display_name,
@@ -145,20 +189,32 @@ export default function AdminSettings() {
         paytm_enabled: settings.paytm_enabled,
         paytm_merchant_id: settings.paytm_merchant_id,
         paytm_merchant_key: settings.paytm_merchant_key,
+        paytm_display_name: settings.paytm_display_name,
+        paytm_display_description: settings.paytm_display_description,
         cashfree_enabled: settings.cashfree_enabled,
         cashfree_app_id: settings.cashfree_app_id,
         cashfree_secret_key: settings.cashfree_secret_key,
+        cashfree_display_name: settings.cashfree_display_name,
+        cashfree_display_description: settings.cashfree_display_description,
         bharatpay_enabled: settings.bharatpay_enabled,
         bharatpay_merchant_id: settings.bharatpay_merchant_id,
         bharatpay_api_key: settings.bharatpay_api_key,
+        bharatpay_display_name: settings.bharatpay_display_name,
+        bharatpay_display_description: settings.bharatpay_display_description,
         payyou_enabled: settings.payyou_enabled,
         payyou_merchant_id: settings.payyou_merchant_id,
         payyou_api_key: settings.payyou_api_key,
+        payyou_display_name: settings.payyou_display_name,
+        payyou_display_description: settings.payyou_display_description,
         phonepe_enabled: settings.phonepe_enabled,
         phonepe_merchant_id: settings.phonepe_merchant_id,
         phonepe_salt_key: settings.phonepe_salt_key,
         phonepe_salt_index: settings.phonepe_salt_index,
+        phonepe_display_name: settings.phonepe_display_name,
+        phonepe_display_description: settings.phonepe_display_description,
         cod_enabled: settings.cod_enabled,
+        cod_display_name: settings.cod_display_name,
+        cod_display_description: settings.cod_display_description,
       };
 
       if (existing) {
@@ -329,6 +385,36 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="razorpay-display-name">Display Name</Label>
+                          <Input
+                            id="razorpay-display-name"
+                            value={settings.razorpay_display_name}
+                            onChange={(e) => updateSetting('razorpay_display_name', e.target.value)}
+                            placeholder="Pay Online (Razorpay)"
+                            disabled={!settings.razorpay_enabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="razorpay-display-desc">Description</Label>
+                          <Input
+                            id="razorpay-display-desc"
+                            value={settings.razorpay_display_description}
+                            onChange={(e) => updateSetting('razorpay_display_description', e.target.value)}
+                            placeholder="Cards, UPI, Net Banking, Wallets"
+                            disabled={!settings.razorpay_enabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -542,6 +628,36 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="paytm-display-name">Display Name</Label>
+                          <Input
+                            id="paytm-display-name"
+                            value={settings.paytm_display_name}
+                            onChange={(e) => updateSetting('paytm_display_name', e.target.value)}
+                            placeholder="Paytm"
+                            disabled={!settings.paytm_enabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="paytm-display-desc">Description</Label>
+                          <Input
+                            id="paytm-display-desc"
+                            value={settings.paytm_display_description}
+                            onChange={(e) => updateSetting('paytm_display_description', e.target.value)}
+                            placeholder="Pay via Paytm Wallet, UPI, Cards"
+                            disabled={!settings.paytm_enabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -594,6 +710,36 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="cashfree-display-name">Display Name</Label>
+                          <Input
+                            id="cashfree-display-name"
+                            value={settings.cashfree_display_name}
+                            onChange={(e) => updateSetting('cashfree_display_name', e.target.value)}
+                            placeholder="Cashfree"
+                            disabled={!settings.cashfree_enabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="cashfree-display-desc">Description</Label>
+                          <Input
+                            id="cashfree-display-desc"
+                            value={settings.cashfree_display_description}
+                            onChange={(e) => updateSetting('cashfree_display_description', e.target.value)}
+                            placeholder="Pay via Cards, UPI, Netbanking"
+                            disabled={!settings.cashfree_enabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -646,6 +792,36 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="bharatpay-display-name">Display Name</Label>
+                          <Input
+                            id="bharatpay-display-name"
+                            value={settings.bharatpay_display_name}
+                            onChange={(e) => updateSetting('bharatpay_display_name', e.target.value)}
+                            placeholder="BharatPay"
+                            disabled={!settings.bharatpay_enabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="bharatpay-display-desc">Description</Label>
+                          <Input
+                            id="bharatpay-display-desc"
+                            value={settings.bharatpay_display_description}
+                            onChange={(e) => updateSetting('bharatpay_display_description', e.target.value)}
+                            placeholder="Pay via UPI & Cards"
+                            disabled={!settings.bharatpay_enabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -698,6 +874,36 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="payyou-display-name">Display Name</Label>
+                          <Input
+                            id="payyou-display-name"
+                            value={settings.payyou_display_name}
+                            onChange={(e) => updateSetting('payyou_display_name', e.target.value)}
+                            placeholder="PayYou"
+                            disabled={!settings.payyou_enabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="payyou-display-desc">Description</Label>
+                          <Input
+                            id="payyou-display-desc"
+                            value={settings.payyou_display_description}
+                            onChange={(e) => updateSetting('payyou_display_description', e.target.value)}
+                            placeholder="Quick & Secure Payment"
+                            disabled={!settings.payyou_enabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -760,6 +966,36 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="phonepe-display-name">Display Name</Label>
+                          <Input
+                            id="phonepe-display-name"
+                            value={settings.phonepe_display_name}
+                            onChange={(e) => updateSetting('phonepe_display_name', e.target.value)}
+                            placeholder="PhonePe"
+                            disabled={!settings.phonepe_enabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="phonepe-display-desc">Description</Label>
+                          <Input
+                            id="phonepe-display-desc"
+                            value={settings.phonepe_display_description}
+                            onChange={(e) => updateSetting('phonepe_display_description', e.target.value)}
+                            placeholder="Pay via PhonePe UPI"
+                            disabled={!settings.phonepe_enabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -807,6 +1043,36 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="cod-display-name">Display Name</Label>
+                          <Input
+                            id="cod-display-name"
+                            value={settings.cod_display_name}
+                            onChange={(e) => updateSetting('cod_display_name', e.target.value)}
+                            placeholder="Cash on Delivery"
+                            disabled={!settings.cod_enabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="cod-display-desc">Description</Label>
+                          <Input
+                            id="cod-display-desc"
+                            value={settings.cod_display_description}
+                            onChange={(e) => updateSetting('cod_display_description', e.target.value)}
+                            placeholder="Pay when you receive your order"
+                            disabled={!settings.cod_enabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
