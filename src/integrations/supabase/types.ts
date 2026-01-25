@@ -297,9 +297,13 @@ export type Database = {
           razorpay_enabled: boolean | null
           razorpay_key_id: string | null
           razorpay_key_secret: string | null
+          razorpay_upi_display_description: string | null
+          razorpay_upi_display_name: string | null
           razorpay_upi_enabled: boolean | null
           razorpay_upi_id: string | null
           updated_at: string
+          upi_display_description: string | null
+          upi_display_name: string | null
           upi_enabled: boolean | null
           upi_id: string | null
         }
@@ -325,9 +329,13 @@ export type Database = {
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
           razorpay_key_secret?: string | null
+          razorpay_upi_display_description?: string | null
+          razorpay_upi_display_name?: string | null
           razorpay_upi_enabled?: boolean | null
           razorpay_upi_id?: string | null
           updated_at?: string
+          upi_display_description?: string | null
+          upi_display_name?: string | null
           upi_enabled?: boolean | null
           upi_id?: string | null
         }
@@ -353,9 +361,13 @@ export type Database = {
           razorpay_enabled?: boolean | null
           razorpay_key_id?: string | null
           razorpay_key_secret?: string | null
+          razorpay_upi_display_description?: string | null
+          razorpay_upi_display_name?: string | null
           razorpay_upi_enabled?: boolean | null
           razorpay_upi_id?: string | null
           updated_at?: string
+          upi_display_description?: string | null
+          upi_display_name?: string | null
           upi_enabled?: boolean | null
           upi_id?: string | null
         }
