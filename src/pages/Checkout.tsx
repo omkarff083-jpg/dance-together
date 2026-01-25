@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, Package, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,6 +75,7 @@ export default function Checkout() {
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
   const [utrNumber, setUtrNumber] = useState('');
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
@@ -331,7 +332,11 @@ export default function Checkout() {
     await clearCheckoutItems();
     setShowUpiDialog(false);
     setUtrNumber('');
-    toast.success('Order placed! We will confirm once payment is verified.');
+    setShowSuccessDialog(true);
+  };
+
+  const handleSuccessClose = () => {
+    setShowSuccessDialog(false);
     navigate('/orders');
   };
 
@@ -598,49 +603,71 @@ export default function Checkout() {
             {/* UPI App Buttons - Amount will be auto-filled */}
             <div className="space-y-3">
               <p className="text-sm font-medium text-center">Pay using UPI App (Amount auto-filled)</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-300"
+                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-purple-50 hover:border-purple-300"
                   onClick={() => openUpiApp('phonepe')}
                 >
-                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">Pe</span>
+                  <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">Pe</span>
                   </div>
-                  <span className="text-xs font-medium">PhonePe</span>
+                  <span className="text-[10px] font-medium">PhonePe</span>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-300"
+                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-blue-50 hover:border-blue-300"
                   onClick={() => openUpiApp('paytm')}
                 >
-                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">Paytm</span>
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                    <span className="text-white font-bold text-[8px]">Paytm</span>
                   </div>
-                  <span className="text-xs font-medium">Paytm</span>
+                  <span className="text-[10px] font-medium">Paytm</span>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-green-50 hover:border-green-300"
+                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-green-50 hover:border-green-300"
                   onClick={() => openUpiApp('gpay')}
                 >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">G</span>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">G</span>
                   </div>
-                  <span className="text-xs font-medium">GPay</span>
+                  <span className="text-[10px] font-medium">GPay</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-blue-50 hover:border-blue-300"
+                  onClick={() => openUpiApp('bhim')}
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-700 to-blue-900 flex items-center justify-center">
+                    <span className="text-white font-bold text-[8px]">BHIM</span>
+                  </div>
+                  <span className="text-[10px] font-medium">BHIM UPI</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-orange-50 hover:border-orange-300"
+                  onClick={() => openUpiApp('amazon')}
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center">
+                    <span className="text-white font-bold text-[8px]">₹Pay</span>
+                  </div>
+                  <span className="text-[10px] font-medium">Amazon</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col items-center justify-center gap-1"
+                  onClick={() => openUpiApp('any')}
+                >
+                  <Smartphone className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-[10px] font-medium">Other UPI</span>
                 </Button>
               </div>
-              
-              <Button
-                variant="outline"
-                className="w-full h-12 flex items-center justify-center gap-2"
-                onClick={() => openUpiApp('any')}
-              >
-                <Smartphone className="h-5 w-5" />
-                <span>Open Any UPI App</span>
-              </Button>
             </div>
 
             {/* Divider */}
@@ -681,6 +708,72 @@ export default function Checkout() {
             <Button onClick={() => confirmUpiPayment()} className="w-full" size="lg">
               I've Made the Payment ✓
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <div className="flex flex-col items-center py-6 space-y-6">
+            {/* Success Animation */}
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center animate-scale-in">
+                <CheckCircle className="h-12 w-12 text-green-600 animate-[bounce_1s_ease-in-out_1]" />
+              </div>
+              {/* Confetti-like dots animation */}
+              <div className="absolute inset-0 animate-fade-in">
+                <div className="absolute -top-2 left-1/2 w-2 h-2 rounded-full bg-yellow-400 animate-[ping_1s_ease-in-out_1]" />
+                <div className="absolute top-1/4 -right-2 w-2 h-2 rounded-full bg-blue-400 animate-[ping_1.2s_ease-in-out_1]" />
+                <div className="absolute -bottom-1 left-1/4 w-2 h-2 rounded-full bg-pink-400 animate-[ping_1.4s_ease-in-out_1]" />
+                <div className="absolute top-1/3 -left-2 w-2 h-2 rounded-full bg-purple-400 animate-[ping_1.6s_ease-in-out_1]" />
+              </div>
+            </div>
+
+            {/* Success Text */}
+            <div className="text-center space-y-2 animate-fade-in">
+              <h2 className="text-2xl font-bold text-foreground">Payment Initiated!</h2>
+              <p className="text-muted-foreground">
+                Your order has been placed successfully
+              </p>
+            </div>
+
+            {/* Amount Paid */}
+            <div className="w-full bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Amount Paid</span>
+                <span className="text-xl font-bold text-green-700">₹{finalTotal.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Order Status Info */}
+            <div className="w-full space-y-3 animate-fade-in">
+              <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+                <Package className="h-5 w-5 text-primary" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Order Processing</p>
+                  <p className="text-xs text-muted-foreground">We'll verify your payment shortly</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="w-full space-y-3 animate-fade-in">
+              <Button onClick={handleSuccessClose} className="w-full" size="lg">
+                View My Orders
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  navigate('/');
+                }} 
+                className="w-full"
+              >
+                Continue Shopping
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
