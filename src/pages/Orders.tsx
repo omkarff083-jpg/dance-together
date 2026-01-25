@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Package, ChevronRight, Truck, Bell } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Package, ChevronRight, Truck, Bell, Search } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -66,10 +67,23 @@ const getStatusLabel = (status: string): string => {
 
 export default function Orders() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [guestOrderId, setGuestOrderId] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
 
   useEffect(() => {
+    // Check for guest order in session storage
+    const storedOrderId = sessionStorage.getItem('guestOrderId');
+    const storedEmail = sessionStorage.getItem('guestOrderEmail');
+    
+    if (!user && storedOrderId) {
+      // Redirect to order tracking for guest
+      navigate(`/orders/${storedOrderId}`);
+      return;
+    }
+
     if (user) {
       fetchOrders();
       
@@ -118,7 +132,7 @@ export default function Orders() {
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, navigate]);
 
   const fetchOrders = async () => {
     try {
@@ -145,6 +159,14 @@ export default function Orders() {
     }
   };
 
+  const handleGuestOrderLookup = () => {
+    if (guestOrderId.trim()) {
+      navigate(`/orders/${guestOrderId.trim()}`);
+    } else {
+      toast.error('Please enter an order ID');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusStyles: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -165,13 +187,35 @@ export default function Orders() {
   if (!user) {
     return (
       <Layout>
-        <div className="container py-16 text-center">
-          <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="font-display text-2xl font-bold mb-4">My Orders</h1>
-          <p className="text-muted-foreground mb-6">Please login to view your orders</p>
-          <Button asChild>
-            <Link to="/auth">Login</Link>
-          </Button>
+        <div className="container py-16">
+          <div className="max-w-md mx-auto text-center">
+            <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h1 className="font-display text-2xl font-bold mb-4">Track Your Order</h1>
+            <p className="text-muted-foreground mb-6">
+              Enter your order ID to track your guest order
+            </p>
+            
+            <Card className="p-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Enter Order ID (e.g., ABC12345)"
+                    value={guestOrderId}
+                    onChange={(e) => setGuestOrderId(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleGuestOrderLookup()}
+                  />
+                </div>
+                <Button onClick={handleGuestOrderLookup} className="w-full">
+                  <Search className="h-4 w-4 mr-2" />
+                  Track Order
+                </Button>
+              </div>
+            </Card>
+            
+            <p className="text-sm text-muted-foreground mt-6">
+              Your order ID was sent to your email after checkout
+            </p>
+          </div>
         </div>
       </Layout>
     );
