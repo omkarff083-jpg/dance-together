@@ -12,21 +12,44 @@ import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ImageSearchModal } from './ImageSearchModal';
+import { LocationPickerModal } from './LocationPickerModal';
+import { supabase } from '@/integrations/supabase/client';
 
 export function HomeHeader() {
   const { user } = useAuth();
   const { totalItems } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [isImageSearchOpen, setIsImageSearchOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [location, setLocation] = useState<string>('Detecting...');
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const navigate = useNavigate();
 
-  // Auto-detect location on mount
+  // Load saved location from profile or auto-detect
   useEffect(() => {
-    const getLocation = async () => {
+    const loadLocation = async () => {
+      // First, try to load saved location from profile
+      if (user) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('address')
+            .eq('id', user.id)
+            .single();
+
+          if (profile?.address) {
+            setLocation(profile.address);
+            setIsLoadingLocation(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading profile:', error);
+        }
+      }
+
+      // If no saved location, auto-detect
       if (!navigator.geolocation) {
-        setLocation('Location not supported');
+        setLocation('Select location');
         setIsLoadingLocation(false);
         return;
       }
@@ -35,60 +58,83 @@ export function HomeHeader() {
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
-            // Use reverse geocoding to get address
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
             );
             const data = await response.json();
             
-            // Extract city/town/village and state
             const address = data.address;
             const city = address.city || address.town || address.village || address.suburb || address.county || '';
             const state = address.state || '';
             const pincode = address.postcode || '';
             
+            let detectedLocation = '';
             if (city && pincode) {
-              setLocation(`${city}, ${pincode}`);
+              detectedLocation = `${city}, ${pincode}`;
             } else if (city && state) {
-              setLocation(`${city}, ${state}`);
+              detectedLocation = `${city}, ${state}`;
             } else if (city) {
-              setLocation(city);
+              detectedLocation = city;
             } else {
-              setLocation('Location detected');
+              detectedLocation = 'Location detected';
+            }
+
+            setLocation(detectedLocation);
+
+            // Save to profile if user is logged in
+            if (user) {
+              await saveLocationToProfile(detectedLocation);
             }
           } catch (error) {
             console.error('Geocoding error:', error);
-            setLocation('Location detected');
+            setLocation('Select location');
           }
           setIsLoadingLocation(false);
         },
         (error) => {
           console.error('Geolocation error:', error);
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              setLocation('Enable location access');
-              break;
-            case error.POSITION_UNAVAILABLE:
-              setLocation('Location unavailable');
-              break;
-            case error.TIMEOUT:
-              setLocation('Location timeout');
-              break;
-            default:
-              setLocation('Your Location');
-          }
+          setLocation('Select location');
           setIsLoadingLocation(false);
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // Cache for 5 minutes
+          maximumAge: 300000
         }
       );
     };
 
-    getLocation();
-  }, []);
+    loadLocation();
+  }, [user]);
+
+  // Save location to user profile
+  const saveLocationToProfile = async (newLocation: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          address: newLocation,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Error saving location:', error);
+      }
+    } catch (error) {
+      console.error('Error saving location:', error);
+    }
+  };
+
+  // Handle location selection from modal
+  const handleLocationSelect = async (newLocation: string) => {
+    setLocation(newLocation);
+    if (user) {
+      await saveLocationToProfile(newLocation);
+    }
+  };
 
   // Handle voice search result
   const handleVoiceResult = useCallback((transcript: string) => {
@@ -244,7 +290,10 @@ export function HomeHeader() {
 
       {/* Delivery Location */}
       <div className="px-4 pb-2">
-        <button className="flex items-center gap-2 text-sm text-foreground hover:text-accent transition-colors">
+        <button 
+          onClick={() => setIsLocationModalOpen(true)}
+          className="flex items-center gap-2 text-sm text-foreground hover:text-accent transition-colors"
+        >
           <MapPin className={cn("h-4 w-4 text-accent", isLoadingLocation && "animate-pulse")} />
           <span>
             Delivering to <strong>{location}</strong>
@@ -261,6 +310,14 @@ export function HomeHeader() {
           setSearchQuery(query);
           navigate(`/products?search=${encodeURIComponent(query)}`);
         }}
+      />
+
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        open={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onLocationSelect={handleLocationSelect}
+        currentLocation={location}
       />
     </header>
   );
