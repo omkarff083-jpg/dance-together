@@ -587,14 +587,19 @@ export default function CheckoutPayment() {
         .from('orders')
         .update({ payment_id: `${prefix}${utrNumber.trim()}`, status: 'awaiting_verification' })
         .eq('id', pendingOrderId);
-      setShowUpiDialog(false);
-      setUtrNumber('');
-      setShowSuccessDialog(true);
-    } else {
-      setShowUpiDialog(false);
-      setUtrNumber('');
-      setShowSuccessDialog(true);
     }
+    
+    // Close dialog and clear states
+    setShowUpiDialog(false);
+    setUtrNumber('');
+    setPendingOrderId(null);
+    
+    // Clear checkout items
+    await clearCheckoutItems();
+    
+    // Show success message and redirect directly
+    toast.success('Order placed successfully! Payment will be verified shortly.');
+    navigate('/orders');
   };
 
   const handleUpiDialogClose = async (open: boolean) => {
