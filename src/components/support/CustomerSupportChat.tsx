@@ -37,6 +37,17 @@ export function CustomerSupportChat() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  // Listen for external open events (from Help Center button, etc.)
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setIsOpen(true);
+      setIsMinimized(false);
+    };
+    
+    window.addEventListener('open-support-chat', handleOpenChat);
+    return () => window.removeEventListener('open-support-chat', handleOpenChat);
+  }, []);
+
   useEffect(() => {
     if (user && isOpen) {
       fetchOrCreateConversation();

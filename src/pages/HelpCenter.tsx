@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { HelpCircle, Package, RefreshCcw, CreditCard, Truck, Shield, MessageCircle, Phone, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const helpCategories = [
   {
@@ -104,6 +107,17 @@ const faqs = [
 ];
 
 export default function HelpCenter() {
+  const { user } = useAuth();
+  
+  const handleStartChat = () => {
+    if (!user) {
+      toast.error('Please login to start a chat');
+      return;
+    }
+    // Trigger the floating chat button by dispatching a custom event
+    window.dispatchEvent(new CustomEvent('open-support-chat'));
+  };
+  
   return (
     <Layout>
       <div className="min-h-screen bg-secondary/30">
@@ -195,7 +209,7 @@ export default function HelpCenter() {
                   <MessageCircle className="h-10 w-10 mx-auto mb-3 text-primary" />
                   <h3 className="font-semibold mb-2">Live Chat</h3>
                   <p className="text-sm text-muted-foreground mb-4">Chat with our support team</p>
-                  <Button size="sm">Start Chat</Button>
+                  <Button size="sm" onClick={handleStartChat}>Start Chat</Button>
                 </div>
                 <div className="text-center p-6 rounded-lg bg-secondary/50">
                   <Phone className="h-10 w-10 mx-auto mb-3 text-primary" />
