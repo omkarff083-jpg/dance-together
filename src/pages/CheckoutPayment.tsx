@@ -573,12 +573,10 @@ export default function CheckoutPayment() {
         .from('orders')
         .update({ payment_id: `${prefix}${utrNumber.trim()}`, status: 'awaiting_verification' })
         .eq('id', pendingOrderId);
-      await clearCheckoutItems();
       setShowUpiDialog(false);
       setUtrNumber('');
       setShowSuccessDialog(true);
     } else {
-      await clearCheckoutItems();
       setShowUpiDialog(false);
       setUtrNumber('');
       setShowSuccessDialog(true);
@@ -623,7 +621,8 @@ export default function CheckoutPayment() {
     setShowUpiDialog(open);
   };
 
-  const handleSuccessClose = () => {
+  const handleSuccessClose = async () => {
+    await clearCheckoutItems();
     setShowSuccessDialog(false);
     navigate('/orders');
   };
