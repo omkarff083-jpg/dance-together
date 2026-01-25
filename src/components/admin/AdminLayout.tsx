@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, FolderTree, ShoppingCart, Settings, MessageCircle, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Package, FolderTree, ShoppingCart, Settings, MessageCircle, ArrowLeft, Users, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,17 +14,18 @@ const navItems = [
   { name: 'Categories', href: '/admin/categories', icon: FolderTree },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { name: 'Support', href: '/admin/support', icon: MessageCircle },
+  { name: 'Admin Users', href: '/admin/users', icon: Users },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!loading && (!user || !isAdmin)) {
-      navigate('/');
+      navigate('/adminowner');
     }
   }, [user, isAdmin, loading, navigate]);
 
@@ -76,6 +77,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Store
             </Link>
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={async () => {
+              await signOut();
+              navigate('/adminowner');
+            }}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
           </Button>
         </div>
       </aside>
