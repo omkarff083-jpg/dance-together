@@ -17,6 +17,7 @@ import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
 import OrderTracking from "./pages/OrderTracking";
 import NotFound from "./pages/NotFound";
+import AdminOwner from "./pages/AdminOwner";
 
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
@@ -24,6 +25,7 @@ import AdminCategories from "./pages/admin/Categories";
 import AdminOrders from "./pages/admin/Orders";
 import AdminSettings from "./pages/admin/Settings";
 import AdminSupport from "./pages/admin/Support";
+import AdminUsers from "./pages/admin/Users";
 
 const queryClient = new QueryClient();
 
@@ -46,12 +48,17 @@ const App = () => (
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:orderId" element={<OrderTracking />} />
               
+              {/* Hidden Admin Login */}
+              <Route path="/adminowner" element={<AdminOwner />} />
+              
+              {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/support" element={<AdminSupport />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
