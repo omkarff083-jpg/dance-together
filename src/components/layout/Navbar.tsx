@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, Heart, User, Menu, Search, LogOut, Settings, Package } from 'lucide-react';
+import { ShoppingBag, Heart, User, Menu, Search, LogOut, Settings, Package, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -88,6 +88,15 @@ export function Navbar() {
                   Admin Panel
                 </Link>
               )}
+              <div className="border-t border-border mt-4 pt-4">
+                <Link
+                  to="/privacy-policy"
+                  className="text-lg font-medium px-4 py-3 rounded-xl transition-colors hover:bg-secondary flex items-center gap-3 text-muted-foreground"
+                >
+                  <Shield className="h-5 w-5" />
+                  Privacy Policy
+                </Link>
+              </div>
             </nav>
           </SheetContent>
         </Sheet>
