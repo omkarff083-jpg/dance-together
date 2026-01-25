@@ -17,6 +17,8 @@ interface PaymentSettings {
   razorpay_enabled: boolean;
   razorpay_key_id: string;
   razorpay_key_secret: string;
+  razorpay_upi_enabled: boolean;
+  razorpay_upi_id: string;
   paytm_enabled: boolean;
   paytm_merchant_id: string;
   paytm_merchant_key: string;
@@ -47,6 +49,8 @@ export default function AdminSettings() {
     razorpay_enabled: false,
     razorpay_key_id: '',
     razorpay_key_secret: '',
+    razorpay_upi_enabled: false,
+    razorpay_upi_id: '',
     paytm_enabled: false,
     paytm_merchant_id: '',
     paytm_merchant_key: '',
@@ -77,6 +81,8 @@ export default function AdminSettings() {
         razorpay_enabled: data.razorpay_enabled ?? false,
         razorpay_key_id: data.razorpay_key_id || '',
         razorpay_key_secret: data.razorpay_key_secret || '',
+        razorpay_upi_enabled: (data as any).razorpay_upi_enabled ?? false,
+        razorpay_upi_id: (data as any).razorpay_upi_id || '',
         paytm_enabled: (data as any).paytm_enabled ?? false,
         paytm_merchant_id: (data as any).paytm_merchant_id || '',
         paytm_merchant_key: (data as any).paytm_merchant_key || '',
@@ -118,6 +124,8 @@ export default function AdminSettings() {
         razorpay_enabled: settings.razorpay_enabled,
         razorpay_key_id: settings.razorpay_key_id,
         razorpay_key_secret: settings.razorpay_key_secret,
+        razorpay_upi_enabled: settings.razorpay_upi_enabled,
+        razorpay_upi_id: settings.razorpay_upi_id,
         paytm_enabled: settings.paytm_enabled,
         paytm_merchant_id: settings.paytm_merchant_id,
         paytm_merchant_key: settings.paytm_merchant_key,
@@ -153,6 +161,7 @@ export default function AdminSettings() {
 
   const enabledGatewaysCount = [
     settings.razorpay_enabled,
+    settings.razorpay_upi_enabled,
     settings.upi_enabled,
     settings.paytm_enabled,
     settings.cashfree_enabled,
@@ -217,10 +226,14 @@ export default function AdminSettings() {
         ) : (
           <div className="space-y-6">
             <Tabs defaultValue="razorpay" className="w-full">
-              <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full h-auto gap-1 p-1">
+              <TabsList className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 w-full h-auto gap-1 p-1">
                 <TabsTrigger value="razorpay" className="text-xs sm:text-sm">
                   Razorpay
                   {settings.razorpay_enabled && <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" />}
+                </TabsTrigger>
+                <TabsTrigger value="razorpay_upi" className="text-xs sm:text-sm">
+                  RZP UPI
+                  {settings.razorpay_upi_enabled && <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" />}
                 </TabsTrigger>
                 <TabsTrigger value="upi" className="text-xs sm:text-sm">
                   UPI
@@ -300,6 +313,56 @@ export default function AdminSettings() {
                         </p>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Razorpay UPI */}
+              <TabsContent value="razorpay_upi">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <Smartphone className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Razorpay UPI (Manual)</CardTitle>
+                          <CardDescription>Accept UPI payments with TR ID verification</CardDescription>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={settings.razorpay_upi_enabled}
+                        onCheckedChange={(v) => updateSetting('razorpay_upi_enabled', v)}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="razorpay-upi-id">Razorpay UPI ID</Label>
+                      <Input
+                        id="razorpay-upi-id"
+                        value={settings.razorpay_upi_id}
+                        onChange={(e) => updateSetting('razorpay_upi_id', e.target.value)}
+                        placeholder="yourname.rzp@rxairtel"
+                        disabled={!settings.razorpay_upi_enabled}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Your Razorpay UPI ID for receiving payments (e.g., name.rzp@rxairtel)
+                      </p>
+                    </div>
+                    {settings.razorpay_upi_enabled && !settings.razorpay_upi_id && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                        <p className="text-sm text-amber-700">
+                          ⚠️ Please enter Razorpay UPI ID to enable payments
+                        </p>
+                      </div>
+                    )}
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm text-blue-700">
+                        💡 Customers will see QR code and enter TR ID (Transaction Reference ID) for verification
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
