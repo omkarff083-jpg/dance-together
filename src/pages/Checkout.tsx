@@ -59,6 +59,7 @@ interface PaymentSettings {
   bharatpay_enabled: boolean;
   payyou_enabled: boolean;
   phonepe_enabled: boolean;
+  cod_enabled: boolean;
 }
 
 declare global {
@@ -144,7 +145,7 @@ export default function Checkout() {
   const fetchPaymentSettings = async () => {
     const { data } = await supabase
       .from('payment_settings')
-      .select('razorpay_enabled, upi_enabled, upi_id, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled')
+      .select('razorpay_enabled, upi_enabled, upi_id, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled, cod_enabled')
       .limit(1)
       .maybeSingle();
     
@@ -165,8 +166,10 @@ export default function Checkout() {
         setPaymentMethod('payyou');
       } else if (data.upi_enabled && data.upi_id) {
         setPaymentMethod('upi');
-      } else {
+      } else if ((data as any).cod_enabled !== false) {
         setPaymentMethod('cod');
+      } else {
+        setPaymentMethod('');
       }
     } else {
       setPaymentMethod('cod');
@@ -454,6 +457,11 @@ export default function Checkout() {
   const isBharatPayAvailable = paymentSettings?.bharatpay_enabled;
   const isPayYouAvailable = paymentSettings?.payyou_enabled;
   const isPhonePeAvailable = paymentSettings?.phonepe_enabled;
+  
+  // Check if COD is available globally and for all products in cart
+  const isGlobalCodEnabled = paymentSettings?.cod_enabled !== false;
+  const allProductsAllowCod = checkoutItems.every(item => (item.product as any)?.cod_available !== false);
+  const isCodAvailable = isGlobalCodEnabled && allProductsAllowCod;
 
   return (
     <Layout>
@@ -658,27 +666,37 @@ export default function Checkout() {
                     </div>
                   )}
                   
-                  {/* COD Option */}
-                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
-                    <RadioGroupItem value="cod" id="cod" />
-                    <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                          <Banknote className="h-5 w-5 text-amber-600" />
+                  {/* COD Option - Only show if globally enabled AND all products allow COD */}
+                  {isCodAvailable && (
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <RadioGroupItem value="cod" id="cod" />
+                      <Label htmlFor="cod" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                            <Banknote className="h-5 w-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Cash on Delivery</p>
+                            <p className="text-sm text-muted-foreground">Pay when you receive your order</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">Cash on Delivery</p>
-                          <p className="text-sm text-muted-foreground">Pay when you receive your order</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
+                      </Label>
+                    </div>
+                  )}
                 </RadioGroup>
 
-                {!isRazorpayAvailable && !isUpiAvailable && !isPaytmAvailable && !isCashfreeAvailable && !isBharatPayAvailable && !isPayYouAvailable && !isPhonePeAvailable && (
-                  <p className="text-sm text-muted-foreground mt-4">
-                    Only Cash on Delivery is available at the moment.
+                {!isCodAvailable && !isRazorpayAvailable && !isUpiAvailable && !isPaytmAvailable && !isCashfreeAvailable && !isBharatPayAvailable && !isPayYouAvailable && !isPhonePeAvailable && (
+                  <p className="text-sm text-destructive mt-4">
+                    ⚠️ No payment methods available. Please contact support.
                   </p>
+                )}
+
+                {!isCodAvailable && (isRazorpayAvailable || isUpiAvailable || isPaytmAvailable || isCashfreeAvailable || isBharatPayAvailable || isPayYouAvailable || isPhonePeAvailable) && (
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-700">
+                      💳 Cash on Delivery is not available for {!isGlobalCodEnabled ? 'this store' : 'some products in your cart'}. Please pay online.
+                    </p>
+                  </div>
                 )}
               </Card>
             </div>
