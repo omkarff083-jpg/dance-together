@@ -488,16 +488,23 @@ export default function Checkout() {
 
             if (verifyError) throw verifyError;
 
-            // Create order in database
+            // Payment verified - now create confirmed order
             await createOrder(response.razorpay_payment_id, 'confirmed');
             await clearCheckoutItems();
             
-            toast.success('Payment successful!');
+            toast.success('Payment successful! Order confirmed.');
             navigate('/orders');
           } catch (error) {
             console.error('Payment verification error:', error);
-            toast.error('Payment verification failed');
+            toast.error('Payment verification failed. Order not placed.');
           }
+        },
+        modal: {
+          ondismiss: () => {
+            // User closed payment window without completing payment
+            toast.error('Payment cancelled. Order not placed.');
+            setLoading(false);
+          },
         },
         prefill: {
           name: form.getValues('fullName'),
@@ -510,6 +517,11 @@ export default function Checkout() {
       };
 
       const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', (response: any) => {
+        console.error('Payment failed:', response.error);
+        toast.error('Payment failed. Order not placed.');
+        setLoading(false);
+      });
       razorpay.open();
     } catch (error) {
       console.error('Razorpay error:', error);
@@ -544,16 +556,65 @@ export default function Checkout() {
 
   const confirmUpiPayment = async (withUtr?: boolean) => {
     if (withUtr && pendingOrderId && utrNumber.trim()) {
-      // Update order with UTR number
+      // Update order with UTR number - this verifies the payment
       await supabase
         .from('orders')
-        .update({ payment_id: `UTR:${utrNumber.trim()}` })
+        .update({ payment_id: `UTR:${utrNumber.trim()}`, status: 'pending' })
         .eq('id', pendingOrderId);
+      await clearCheckoutItems();
+      setShowUpiDialog(false);
+      setUtrNumber('');
+      setShowSuccessDialog(true);
+    } else {
+      // No UTR provided - user wants to verify later
+      // Keep order as awaiting_payment
+      await clearCheckoutItems();
+      setShowUpiDialog(false);
+      setUtrNumber('');
+      setShowSuccessDialog(true);
     }
-    await clearCheckoutItems();
-    setShowUpiDialog(false);
-    setUtrNumber('');
-    setShowSuccessDialog(true);
+  };
+
+  // Handle UPI dialog close - cancel order if not completed
+  const handleUpiDialogClose = async (open: boolean) => {
+    if (!open && pendingOrderId) {
+      // User closed dialog without confirming payment - cancel the order
+      await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', pendingOrderId);
+      
+      // Also delete order items
+      await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', pendingOrderId);
+      
+      // Reverse coupon usage if applied
+      if (appliedCoupon) {
+        const { data: couponData } = await supabase
+          .from('coupons')
+          .select('used_count')
+          .eq('id', appliedCoupon.id)
+          .single();
+        
+        if (couponData && couponData.used_count > 0) {
+          await supabase
+            .from('coupons')
+            .update({ used_count: couponData.used_count - 1 })
+            .eq('id', appliedCoupon.id);
+        }
+        
+        await supabase
+          .from('coupon_usage')
+          .delete()
+          .eq('order_id', pendingOrderId);
+      }
+      
+      setPendingOrderId(null);
+      toast.error('Payment not completed. Order cancelled.');
+    }
+    setShowUpiDialog(open);
   };
 
   const handleSuccessClose = () => {
@@ -585,27 +646,16 @@ export default function Checkout() {
     } else if (paymentMethod === 'upi') {
       await handleUpiPayment();
     } else if (['paytm', 'cashfree', 'phonepe', 'bharatpay', 'payyou'].includes(paymentMethod)) {
-      // For other payment gateways - create order with awaiting payment status
-      // These would need proper integration with their respective APIs
-      setLoading(true);
-      try {
-        await createOrder(undefined, 'awaiting_payment');
-        await clearCheckoutItems();
-        toast.success(`Order placed! You will be redirected to ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} for payment.`);
-        navigate('/orders');
-      } catch (error) {
-        console.error('Order error:', error);
-        toast.error('Failed to place order');
-      } finally {
-        setLoading(false);
-      }
+      // For other payment gateways - these need proper API integration
+      // Order should only be confirmed after payment is received from gateway
+      toast.info(`${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} integration is coming soon. Please use another payment method.`);
     } else {
-      // COD order
+      // COD order - confirm immediately as no payment needed upfront
       setLoading(true);
       try {
-        await createOrder(undefined, 'pending');
+        await createOrder(undefined, 'confirmed');
         await clearCheckoutItems();
-        toast.success('Order placed successfully!');
+        toast.success('Order placed successfully! Pay on delivery.');
         navigate('/orders');
       } catch (error) {
         console.error('Order error:', error);
@@ -1033,7 +1083,7 @@ export default function Checkout() {
       </div>
 
       {/* UPI Payment Dialog with App Redirect */}
-      <Dialog open={showUpiDialog} onOpenChange={setShowUpiDialog}>
+      <Dialog open={showUpiDialog} onOpenChange={handleUpiDialogClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center">Pay via UPI</DialogTitle>
