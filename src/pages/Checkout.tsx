@@ -88,6 +88,8 @@ export default function Checkout() {
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
 
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  
   const form = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
@@ -100,6 +102,54 @@ export default function Checkout() {
       pincode: '',
     },
   });
+
+  // Background pincode lookup for auto-filling city and state
+  const lookupPincode = async (pincode: string) => {
+    if (pincode.length !== 6) return;
+    
+    setPincodeLoading(true);
+    
+    try {
+      // First try from our serviceable_pincodes table
+      const { data: localData } = await supabase
+        .from('serviceable_pincodes')
+        .select('city, state')
+        .eq('pincode', pincode)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (localData?.city && localData?.state) {
+        form.setValue('city', localData.city);
+        form.setValue('state', localData.state);
+        setPincodeLoading(false);
+        return;
+      }
+      
+      // Fallback to external API (India Post API via proxy)
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const apiData = await response.json();
+      
+      if (apiData?.[0]?.Status === 'Success' && apiData[0].PostOffice?.length > 0) {
+        const postOffice = apiData[0].PostOffice[0];
+        form.setValue('city', postOffice.District || postOffice.Name);
+        form.setValue('state', postOffice.State);
+      }
+    } catch (error) {
+      // Silent fail - don't block the order
+      console.log('Pincode lookup failed:', error);
+    } finally {
+      setPincodeLoading(false);
+    }
+  };
+
+  // Watch pincode changes for auto-fill
+  const watchedPincode = form.watch('pincode');
+  
+  useEffect(() => {
+    if (watchedPincode?.length === 6 && /^\d{6}$/.test(watchedPincode)) {
+      lookupPincode(watchedPincode);
+    }
+  }, [watchedPincode]);
 
   useEffect(() => {
     // Check for Buy Now mode
@@ -512,24 +562,42 @@ export default function Checkout() {
 
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
+                      <Label htmlFor="pincode">Pincode</Label>
+                      <div className="relative">
+                        <Input 
+                          id="pincode" 
+                          {...form.register('pincode')} 
+                          placeholder="Enter pincode"
+                          maxLength={6}
+                        />
+                        {pincodeLoading && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                      {form.formState.errors.pincode && (
+                        <p className="text-sm text-destructive">{form.formState.errors.pincode.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="city">City</Label>
-                      <Input id="city" {...form.register('city')} />
+                      <Input 
+                        id="city" 
+                        {...form.register('city')} 
+                        placeholder={pincodeLoading ? "Loading..." : "City"}
+                      />
                       {form.formState.errors.city && (
                         <p className="text-sm text-destructive">{form.formState.errors.city.message}</p>
                       )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="state">State</Label>
-                      <Input id="state" {...form.register('state')} />
+                      <Input 
+                        id="state" 
+                        {...form.register('state')} 
+                        placeholder={pincodeLoading ? "Loading..." : "State"}
+                      />
                       {form.formState.errors.state && (
                         <p className="text-sm text-destructive">{form.formState.errors.state.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="pincode">Pincode</Label>
-                      <Input id="pincode" {...form.register('pincode')} placeholder="Enter pincode" />
-                      {form.formState.errors.pincode && (
-                        <p className="text-sm text-destructive">{form.formState.errors.pincode.message}</p>
                       )}
                     </div>
                   </div>
