@@ -90,6 +90,21 @@ export default function CheckoutPayment() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [welcomeCouponChecked, setWelcomeCouponChecked] = useState(false);
+  const [customerIp, setCustomerIp] = useState<string | null>(null);
+
+  // Fetch customer IP on mount
+  useEffect(() => {
+    const fetchIp = async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        setCustomerIp(data.ip);
+      } catch (error) {
+        console.log('Could not fetch IP:', error);
+      }
+    };
+    fetchIp();
+  }, []);
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
 
@@ -359,6 +374,7 @@ export default function CheckoutPayment() {
       payment_id: paymentId || null,
       discount_amount: discountAmount,
       coupon_code: appliedCoupon?.code || null,
+      customer_ip: customerIp,
       shipping_address: {
         fullName: addressData.fullName,
         email: addressData.email,

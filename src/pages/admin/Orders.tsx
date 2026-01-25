@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CheckCircle2, XCircle, Clock, CreditCard, Banknote, Smartphone, Eye, Copy, Check, Search, MessageCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, CreditCard, Banknote, Smartphone, Eye, Copy, Check, Search, MessageCircle, Globe, MapPin } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -303,6 +303,12 @@ For any queries, reply to this message.`;
                                 {order.shipping_address.fullName} • {order.shipping_address.phone}
                               </p>
                             )}
+                            {order.customer_ip && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Globe className="h-3 w-3" />
+                                IP: {order.customer_ip}
+                              </p>
+                            )}
                           </div>
                           
                           <div className="flex items-center gap-2 flex-wrap">
@@ -472,10 +478,38 @@ For any queries, reply to this message.`;
                 </div>
               )}
 
+              {/* Customer IP Tracking */}
+              {selectedOrder.customer_ip && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    Customer IP Address
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="font-mono text-sm bg-background px-3 py-1.5 rounded font-semibold">
+                      {selectedOrder.customer_ip}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedOrder.customer_ip);
+                        toast.success('IP copied!');
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Shipping Address */}
               {selectedOrder.shipping_address && (
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">Shipping Address</p>
+                  <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Shipping Address
+                  </p>
                   <div className="p-4 bg-secondary/50 rounded-lg space-y-1">
                     <p className="font-medium">{selectedOrder.shipping_address.fullName}</p>
                     <p className="text-sm">{selectedOrder.shipping_address.phone}</p>
