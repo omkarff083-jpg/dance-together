@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format, addDays, differenceInDays, isAfter } from 'date-fns';
 import { 
@@ -14,7 +14,9 @@ import {
   Check,
   XCircle,
   Calendar,
-  Timer
+  Timer,
+  Bell,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,6 +27,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 interface OrderItem {
   id: string;
@@ -134,6 +137,10 @@ export default function OrderTracking() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [statusHistory, setStatusHistory] = useState<{ status: string; time: Date }[]>([]);
+  const [showUpdateAnimation, setShowUpdateAnimation] = useState(false);
+  const { playNotification } = useNotificationSound();
+  const previousStatus = useRef<string | null>(null);
 
   useEffect(() => {
     if (user && orderId) {
@@ -151,8 +158,35 @@ export default function OrderTracking() {
             filter: `id=eq.${orderId}`,
           },
           (payload) => {
+            const newStatus = (payload.new as any).status;
+            
+            // Check if status actually changed
+            if (previousStatus.current && previousStatus.current !== newStatus) {
+              // Play notification sound
+              playNotification();
+              
+              // Show update animation
+              setShowUpdateAnimation(true);
+              setTimeout(() => setShowUpdateAnimation(false), 3000);
+              
+              // Add to status history
+              setStatusHistory(prev => [
+                { status: newStatus, time: new Date() },
+                ...prev
+              ]);
+              
+              // Show toast with status-specific message
+              const statusMessages: Record<string, string> = {
+                confirmed: '🎉 Your order has been confirmed!',
+                shipped: '🚚 Your order is on the way!',
+                delivered: '📦 Your order has been delivered!',
+                cancelled: '❌ Your order has been cancelled',
+              };
+              toast.success(statusMessages[newStatus] || 'Order status updated!');
+            }
+            
+            previousStatus.current = newStatus;
             setOrder((prev) => prev ? { ...prev, ...payload.new } : null);
-            toast.info('Order status updated!');
           }
         )
         .subscribe();
@@ -163,7 +197,7 @@ export default function OrderTracking() {
     } else {
       setLoading(false);
     }
-  }, [user, orderId]);
+  }, [user, orderId, playNotification]);
 
   const fetchOrder = async () => {
     try {
@@ -196,6 +230,12 @@ export default function OrderTracking() {
             parsedAddress = data.shipping_address as unknown as ShippingAddress;
           }
         }
+        
+        // Initialize previous status for comparison
+        previousStatus.current = data.status;
+        
+        // Initialize status history
+        setStatusHistory([{ status: data.status, time: new Date(data.updated_at) }]);
         
         setOrder({
           id: data.id,
@@ -317,8 +357,16 @@ export default function OrderTracking() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <div>
-            <h1 className="font-display text-2xl md:text-3xl font-bold">Track Order</h1>
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <h1 className="font-display text-2xl md:text-3xl font-bold">Track Order</h1>
+              {showUpdateAnimation && (
+                <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full animate-pulse">
+                  <Bell className="h-3 w-3" />
+                  Updated!
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-muted-foreground">Order ID:</span>
               <code className="text-sm bg-secondary px-2 py-0.5 rounded">
@@ -327,14 +375,38 @@ export default function OrderTracking() {
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyOrderId}>
                 {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6" 
+                onClick={fetchOrder}
+                title="Refresh"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
             </div>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Live Status Update Banner */}
+            {showUpdateAnimation && (
+              <Card className="p-4 bg-green-50 border-green-200 animate-scale-in">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center animate-pulse">
+                    <Bell className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-green-700">Status Updated!</p>
+                    <p className="text-sm text-green-600">Your order status has been updated just now.</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Order Status Timeline */}
-            <Card className="p-6">
+            <Card className={`p-6 ${showUpdateAnimation ? 'ring-2 ring-green-400 ring-opacity-50' : ''}`}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-semibold text-lg">Order Status</h2>
                 {getStatusBadge(order.status)}

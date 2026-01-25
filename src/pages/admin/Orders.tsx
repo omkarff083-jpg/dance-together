@@ -53,7 +53,13 @@ export default function AdminOrders() {
     }
   };
 
-  const getStatusMessage = (status: string): string => {
+  const getStatusMessage = (status: string, isVerification?: boolean, isRejection?: boolean): string => {
+    if (isVerification) {
+      return '✅ Your payment has been verified successfully! Your order is now confirmed and being processed.';
+    }
+    if (isRejection) {
+      return '❌ Unfortunately, we could not verify your payment. Your order has been cancelled. If you believe this is an error, please contact support.';
+    }
     const messages: Record<string, string> = {
       pending: 'Your order has been received and is pending confirmation.',
       awaiting_payment: 'We are waiting for your payment confirmation.',
@@ -81,7 +87,7 @@ export default function AdminOrders() {
     return cleaned;
   };
 
-  const sendWhatsAppNotification = (order: any, status?: string) => {
+  const sendWhatsAppNotification = (order: any, status?: string, isVerification?: boolean, isRejection?: boolean) => {
     const phone = order.shipping_address?.phone;
     if (!phone) {
       toast.error('Customer phone number not available');
@@ -94,10 +100,10 @@ export default function AdminOrders() {
     const customerName = order.shipping_address?.fullName || 'Customer';
     const totalAmount = order.total_amount?.toLocaleString() || '0';
     const itemCount = order.order_items?.length || 0;
-    const statusMessage = getStatusMessage(orderStatus);
+    const statusMessage = getStatusMessage(orderStatus, isVerification, isRejection);
 
     // Create WhatsApp message
-    const message = `🛍️ *LUXE Order Update*
+    let message = `🛍️ *LUXE Order Update*
 
 Hello ${customerName}!
 
@@ -109,9 +115,24 @@ ${statusMessage}
 📦 *Order Details:*
 • Items: ${itemCount}
 • Total: ₹${totalAmount}
+`;
 
-${orderStatus === 'shipped' ? '🚚 Track your order in your account.' : ''}
+    if (isVerification) {
+      message += `
+🎉 *Payment Confirmed!*
+Your order is now being prepared for shipping.
+Track your order in your account.
 
+`;
+    }
+
+    if (orderStatus === 'shipped') {
+      message += `
+🚚 Track your order in your account.
+`;
+    }
+
+    message += `
 Thank you for shopping with LUXE!
 For any queries, reply to this message.`;
 
@@ -122,18 +143,28 @@ For any queries, reply to this message.`;
     toast.success('Opening WhatsApp...');
   };
 
-  const verifyUpiPayment = async (orderId: string) => {
+  const verifyUpiPayment = async (orderId: string, order?: any) => {
     await supabase.from('orders').update({ status: 'confirmed' }).eq('id', orderId);
     toast.success('Payment verified and order confirmed!');
     setShowOrderDialog(false);
     fetchOrders();
+    
+    // Auto-send WhatsApp verification notification
+    if (order?.shipping_address?.phone) {
+      sendWhatsAppNotification(order, 'confirmed', true, false);
+    }
   };
 
-  const rejectUpiPayment = async (orderId: string) => {
+  const rejectUpiPayment = async (orderId: string, order?: any) => {
     await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
     toast.error('Payment rejected and order cancelled');
     setShowOrderDialog(false);
     fetchOrders();
+    
+    // Auto-send WhatsApp rejection notification
+    if (order?.shipping_address?.phone) {
+      sendWhatsAppNotification(order, 'cancelled', false, true);
+    }
   };
 
   const copyUtr = (utr: string) => {
@@ -354,7 +385,7 @@ For any queries, reply to this message.`;
                                     size="sm"
                                     variant="default"
                                     className="bg-green-600 hover:bg-green-700"
-                                    onClick={() => verifyUpiPayment(order.id)}
+                                    onClick={() => verifyUpiPayment(order.id, order)}
                                   >
                                     <CheckCircle2 className="h-4 w-4 mr-1" />
                                     Verify
@@ -362,7 +393,7 @@ For any queries, reply to this message.`;
                                   <Button
                                     size="sm"
                                     variant="destructive"
-                                    onClick={() => rejectUpiPayment(order.id)}
+                                    onClick={() => rejectUpiPayment(order.id, order)}
                                   >
                                     <XCircle className="h-4 w-4 mr-1" />
                                     Reject
@@ -500,7 +531,7 @@ For any queries, reply to this message.`;
                 <div className="flex gap-3">
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700"
-                    onClick={() => verifyUpiPayment(selectedOrder.id)}
+                    onClick={() => verifyUpiPayment(selectedOrder.id, selectedOrder)}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
                     Verify Payment
@@ -508,7 +539,7 @@ For any queries, reply to this message.`;
                   <Button
                     variant="destructive"
                     className="flex-1"
-                    onClick={() => rejectUpiPayment(selectedOrder.id)}
+                    onClick={() => rejectUpiPayment(selectedOrder.id, selectedOrder)}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Reject Payment
