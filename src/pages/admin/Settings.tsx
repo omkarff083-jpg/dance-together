@@ -14,11 +14,15 @@ import { Badge } from '@/components/ui/badge';
 interface PaymentSettings {
   upi_id: string;
   upi_enabled: boolean;
+  upi_display_name: string;
+  upi_display_description: string;
   razorpay_enabled: boolean;
   razorpay_key_id: string;
   razorpay_key_secret: string;
   razorpay_upi_enabled: boolean;
   razorpay_upi_id: string;
+  razorpay_upi_display_name: string;
+  razorpay_upi_display_description: string;
   paytm_enabled: boolean;
   paytm_merchant_id: string;
   paytm_merchant_key: string;
@@ -46,11 +50,15 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<PaymentSettings>({
     upi_id: '',
     upi_enabled: true,
+    upi_display_name: 'Pay via UPI',
+    upi_display_description: 'Scan QR code or pay to UPI ID',
     razorpay_enabled: false,
     razorpay_key_id: '',
     razorpay_key_secret: '',
     razorpay_upi_enabled: false,
     razorpay_upi_id: '',
+    razorpay_upi_display_name: 'Razorpay UPI',
+    razorpay_upi_display_description: 'Pay via QR & Enter TR ID',
     paytm_enabled: false,
     paytm_merchant_id: '',
     paytm_merchant_key: '',
@@ -78,11 +86,15 @@ export default function AdminSettings() {
       setSettings({
         upi_id: data.upi_id || '',
         upi_enabled: data.upi_enabled ?? true,
+        upi_display_name: (data as any).upi_display_name || 'Pay via UPI',
+        upi_display_description: (data as any).upi_display_description || 'Scan QR code or pay to UPI ID',
         razorpay_enabled: data.razorpay_enabled ?? false,
         razorpay_key_id: data.razorpay_key_id || '',
         razorpay_key_secret: data.razorpay_key_secret || '',
         razorpay_upi_enabled: (data as any).razorpay_upi_enabled ?? false,
         razorpay_upi_id: (data as any).razorpay_upi_id || '',
+        razorpay_upi_display_name: (data as any).razorpay_upi_display_name || 'Razorpay UPI',
+        razorpay_upi_display_description: (data as any).razorpay_upi_display_description || 'Pay via QR & Enter TR ID',
         paytm_enabled: (data as any).paytm_enabled ?? false,
         paytm_merchant_id: (data as any).paytm_merchant_id || '',
         paytm_merchant_key: (data as any).paytm_merchant_key || '',
@@ -121,11 +133,15 @@ export default function AdminSettings() {
       const settingsData = {
         upi_id: settings.upi_id,
         upi_enabled: settings.upi_enabled,
+        upi_display_name: settings.upi_display_name,
+        upi_display_description: settings.upi_display_description,
         razorpay_enabled: settings.razorpay_enabled,
         razorpay_key_id: settings.razorpay_key_id,
         razorpay_key_secret: settings.razorpay_key_secret,
         razorpay_upi_enabled: settings.razorpay_upi_enabled,
         razorpay_upi_id: settings.razorpay_upi_id,
+        razorpay_upi_display_name: settings.razorpay_upi_display_name,
+        razorpay_upi_display_description: settings.razorpay_upi_display_description,
         paytm_enabled: settings.paytm_enabled,
         paytm_merchant_id: settings.paytm_merchant_id,
         paytm_merchant_key: settings.paytm_merchant_key,
@@ -351,6 +367,43 @@ export default function AdminSettings() {
                         Your Razorpay UPI ID for receiving payments (e.g., name.rzp@rxairtel)
                       </p>
                     </div>
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="razorpay-upi-display-name">Display Name</Label>
+                          <Input
+                            id="razorpay-upi-display-name"
+                            value={settings.razorpay_upi_display_name}
+                            onChange={(e) => updateSetting('razorpay_upi_display_name', e.target.value)}
+                            placeholder="Razorpay UPI"
+                            disabled={!settings.razorpay_upi_enabled}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            जैसे: "UPI Pay", "QR Pay", "Fast Pay"
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="razorpay-upi-display-desc">Description</Label>
+                          <Input
+                            id="razorpay-upi-display-desc"
+                            value={settings.razorpay_upi_display_description}
+                            onChange={(e) => updateSetting('razorpay_upi_display_description', e.target.value)}
+                            placeholder="Pay via QR & Enter TR ID"
+                            disabled={!settings.razorpay_upi_enabled}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            जैसे: "Scan & Pay instantly", "Quick payment"
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {settings.razorpay_upi_enabled && !settings.razorpay_upi_id && (
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                         <p className="text-sm text-amber-700">
@@ -400,6 +453,42 @@ export default function AdminSettings() {
                       <p className="text-xs text-muted-foreground">
                         Your UPI ID for receiving payments via QR code
                       </p>
+                    </div>
+                    
+                    {/* Custom Display Name Settings */}
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        🎨 Display Customization
+                        <span className="text-xs text-muted-foreground">(Checkout page पर दिखेगा)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="upi-display-name">Display Name</Label>
+                          <Input
+                            id="upi-display-name"
+                            value={settings.upi_display_name}
+                            onChange={(e) => updateSetting('upi_display_name', e.target.value)}
+                            placeholder="Pay via UPI"
+                            disabled={!settings.upi_enabled}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            जैसे: "UPI Pay", "Scan & Pay", "QR Payment"
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="upi-display-desc">Description</Label>
+                          <Input
+                            id="upi-display-desc"
+                            value={settings.upi_display_description}
+                            onChange={(e) => updateSetting('upi_display_description', e.target.value)}
+                            placeholder="Scan QR code or pay to UPI ID"
+                            disabled={!settings.upi_enabled}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            जैसे: "Fast & Secure", "Instant payment"
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

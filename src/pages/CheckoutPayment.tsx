@@ -49,8 +49,12 @@ interface PaymentSettings {
   razorpay_enabled: boolean;
   razorpay_upi_enabled: boolean;
   razorpay_upi_id: string | null;
+  razorpay_upi_display_name: string | null;
+  razorpay_upi_display_description: string | null;
   upi_enabled: boolean;
   upi_id: string | null;
+  upi_display_name: string | null;
+  upi_display_description: string | null;
   paytm_enabled: boolean;
   cashfree_enabled: boolean;
   bharatpay_enabled: boolean;
@@ -160,7 +164,7 @@ export default function CheckoutPayment() {
   const fetchPaymentSettings = async () => {
     const { data } = await supabase
       .from('payment_settings')
-      .select('razorpay_enabled, razorpay_upi_enabled, razorpay_upi_id, upi_enabled, upi_id, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled, cod_enabled')
+      .select('razorpay_enabled, razorpay_upi_enabled, razorpay_upi_id, razorpay_upi_display_name, razorpay_upi_display_description, upi_enabled, upi_id, upi_display_name, upi_display_description, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled, cod_enabled')
       .limit(1)
       .maybeSingle();
     
@@ -835,8 +839,8 @@ export default function CheckoutPayment() {
                           <span className="text-white font-bold text-xs">RZP</span>
                         </div>
                         <div>
-                          <p className="font-medium">Razorpay UPI</p>
-                          <p className="text-sm text-muted-foreground">Pay via QR & Enter TR ID</p>
+                          <p className="font-medium">{paymentSettings?.razorpay_upi_display_name || 'Razorpay UPI'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.razorpay_upi_display_description || 'Pay via QR & Enter TR ID'}</p>
                         </div>
                       </div>
                     </Label>
@@ -937,8 +941,8 @@ export default function CheckoutPayment() {
                           <QrCode className="h-5 w-5 text-green-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Pay via UPI</p>
-                          <p className="text-sm text-muted-foreground">Scan QR code or pay to UPI ID</p>
+                          <p className="font-medium">{paymentSettings?.upi_display_name || 'Pay via UPI'}</p>
+                          <p className="text-sm text-muted-foreground">{paymentSettings?.upi_display_description || 'Scan QR code or pay to UPI ID'}</p>
                         </div>
                       </div>
                     </Label>
@@ -1055,13 +1059,13 @@ export default function CheckoutPayment() {
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : null}
                 {paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
-                 paymentMethod === 'razorpay_upi' ? 'Pay with Razorpay UPI' :
+                 paymentMethod === 'razorpay_upi' ? `Pay with ${paymentSettings?.razorpay_upi_display_name || 'Razorpay UPI'}` :
                  paymentMethod === 'paytm' ? 'Pay with Paytm' :
                  paymentMethod === 'cashfree' ? 'Pay with Cashfree' :
                  paymentMethod === 'phonepe' ? 'Pay with PhonePe' :
                  paymentMethod === 'bharatpay' ? 'Pay with BharatPay' :
                  paymentMethod === 'payyou' ? 'Pay with PayYou' :
-                 paymentMethod === 'upi' ? 'Generate UPI QR' : 'Place Order (COD)'}
+                 paymentMethod === 'upi' ? `${paymentSettings?.upi_display_name || 'Generate UPI QR'}` : 'Place Order (COD)'}
               </Button>
             </Card>
           </div>
