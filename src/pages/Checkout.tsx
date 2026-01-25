@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, Package, ArrowRight } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, Package, ArrowRight, Wallet, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +54,11 @@ interface PaymentSettings {
   razorpay_enabled: boolean;
   upi_enabled: boolean;
   upi_id: string | null;
+  paytm_enabled: boolean;
+  cashfree_enabled: boolean;
+  bharatpay_enabled: boolean;
+  payyou_enabled: boolean;
+  phonepe_enabled: boolean;
 }
 
 declare global {
@@ -139,15 +144,25 @@ export default function Checkout() {
   const fetchPaymentSettings = async () => {
     const { data } = await supabase
       .from('payment_settings')
-      .select('razorpay_enabled, upi_enabled, upi_id')
+      .select('razorpay_enabled, upi_enabled, upi_id, paytm_enabled, cashfree_enabled, bharatpay_enabled, payyou_enabled, phonepe_enabled')
       .limit(1)
       .maybeSingle();
     
     if (data) {
-      setPaymentSettings(data);
-      // Set default payment method based on what's enabled
+      setPaymentSettings(data as PaymentSettings);
+      // Set default payment method based on what's enabled (prioritize online payments)
       if (data.razorpay_enabled) {
         setPaymentMethod('razorpay');
+      } else if ((data as any).paytm_enabled) {
+        setPaymentMethod('paytm');
+      } else if ((data as any).cashfree_enabled) {
+        setPaymentMethod('cashfree');
+      } else if ((data as any).phonepe_enabled) {
+        setPaymentMethod('phonepe');
+      } else if ((data as any).bharatpay_enabled) {
+        setPaymentMethod('bharatpay');
+      } else if ((data as any).payyou_enabled) {
+        setPaymentMethod('payyou');
       } else if (data.upi_enabled && data.upi_id) {
         setPaymentMethod('upi');
       } else {
@@ -388,6 +403,21 @@ export default function Checkout() {
       await handleRazorpayPayment();
     } else if (paymentMethod === 'upi') {
       await handleUpiPayment();
+    } else if (['paytm', 'cashfree', 'phonepe', 'bharatpay', 'payyou'].includes(paymentMethod)) {
+      // For other payment gateways - create order with awaiting payment status
+      // These would need proper integration with their respective APIs
+      setLoading(true);
+      try {
+        await createOrder(undefined, 'awaiting_payment');
+        await clearCheckoutItems();
+        toast.success(`Order placed! You will be redirected to ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} for payment.`);
+        navigate('/orders');
+      } catch (error) {
+        console.error('Order error:', error);
+        toast.error('Failed to place order');
+      } finally {
+        setLoading(false);
+      }
     } else {
       // COD order
       setLoading(true);
@@ -419,6 +449,11 @@ export default function Checkout() {
 
   const isRazorpayAvailable = paymentSettings?.razorpay_enabled;
   const isUpiAvailable = paymentSettings?.upi_enabled && paymentSettings?.upi_id;
+  const isPaytmAvailable = paymentSettings?.paytm_enabled;
+  const isCashfreeAvailable = paymentSettings?.cashfree_enabled;
+  const isBharatPayAvailable = paymentSettings?.bharatpay_enabled;
+  const isPayYouAvailable = paymentSettings?.payyou_enabled;
+  const isPhonePeAvailable = paymentSettings?.phonepe_enabled;
 
   return (
     <Layout>
@@ -496,14 +531,16 @@ export default function Checkout() {
               <Card className="p-6">
                 <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
                 
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
                   {/* Razorpay Option */}
                   {isRazorpayAvailable && (
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50">
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
                       <RadioGroupItem value="razorpay" id="razorpay" />
                       <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-3">
-                          <CreditCard className="h-5 w-5 text-primary" />
+                          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-blue-600" />
+                          </div>
                           <div>
                             <p className="font-medium">Pay Online (Razorpay)</p>
                             <p className="text-sm text-muted-foreground">Cards, UPI, Net Banking, Wallets</p>
@@ -512,14 +549,106 @@ export default function Checkout() {
                       </Label>
                     </div>
                   )}
+
+                  {/* Paytm Option */}
+                  {isPaytmAvailable && (
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <RadioGroupItem value="paytm" id="paytm" />
+                      <Label htmlFor="paytm" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+                            <Wallet className="h-5 w-5 text-sky-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Paytm</p>
+                            <p className="text-sm text-muted-foreground">Paytm Wallet, UPI, Cards & Net Banking</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
+
+                  {/* Cashfree Option */}
+                  {isCashfreeAvailable && (
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <RadioGroupItem value="cashfree" id="cashfree" />
+                      <Label htmlFor="cashfree" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                            <Banknote className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Cashfree</p>
+                            <p className="text-sm text-muted-foreground">Fast & secure payments</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
+
+                  {/* PhonePe Merchant Option */}
+                  {isPhonePeAvailable && (
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <RadioGroupItem value="phonepe" id="phonepe" />
+                      <Label htmlFor="phonepe" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                            <Smartphone className="h-5 w-5 text-indigo-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">PhonePe</p>
+                            <p className="text-sm text-muted-foreground">Pay via PhonePe Business</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
+
+                  {/* BharatPay Option */}
+                  {isBharatPayAvailable && (
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <RadioGroupItem value="bharatpay" id="bharatpay" />
+                      <Label htmlFor="bharatpay" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                            <Building2 className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">BharatPay</p>
+                            <p className="text-sm text-muted-foreground">UPI & Bank payments</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
+
+                  {/* PayYou Biz Option */}
+                  {isPayYouAvailable && (
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <RadioGroupItem value="payyou" id="payyou" />
+                      <Label htmlFor="payyou" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+                            <Wallet className="h-5 w-5 text-teal-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">PayYou Biz</p>
+                            <p className="text-sm text-muted-foreground">Business payment solution</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
                   
                   {/* UPI Option */}
                   {isUpiAvailable && (
-                    <div className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 ${isRazorpayAvailable ? 'mt-3' : ''}`}>
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
                       <RadioGroupItem value="upi" id="upi" />
                       <Label htmlFor="upi" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-3">
-                          <QrCode className="h-5 w-5 text-primary" />
+                          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                            <QrCode className="h-5 w-5 text-green-600" />
+                          </div>
                           <div>
                             <p className="font-medium">Pay via UPI</p>
                             <p className="text-sm text-muted-foreground">Scan QR code or pay to UPI ID</p>
@@ -530,11 +659,13 @@ export default function Checkout() {
                   )}
                   
                   {/* COD Option */}
-                  <div className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 ${(isRazorpayAvailable || isUpiAvailable) ? 'mt-3' : ''}`}>
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
                     <RadioGroupItem value="cod" id="cod" />
                     <Label htmlFor="cod" className="flex-1 cursor-pointer">
                       <div className="flex items-center gap-3">
-                        <Banknote className="h-5 w-5 text-primary" />
+                        <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                          <Banknote className="h-5 w-5 text-amber-600" />
+                        </div>
                         <div>
                           <p className="font-medium">Cash on Delivery</p>
                           <p className="text-sm text-muted-foreground">Pay when you receive your order</p>
@@ -544,7 +675,7 @@ export default function Checkout() {
                   </div>
                 </RadioGroup>
 
-                {!isRazorpayAvailable && !isUpiAvailable && (
+                {!isRazorpayAvailable && !isUpiAvailable && !isPaytmAvailable && !isCashfreeAvailable && !isBharatPayAvailable && !isPayYouAvailable && !isPhonePeAvailable && (
                   <p className="text-sm text-muted-foreground mt-4">
                     Only Cash on Delivery is available at the moment.
                   </p>
@@ -610,7 +741,13 @@ export default function Checkout() {
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : null}
-                  {paymentMethod === 'razorpay' ? 'Pay Now' : paymentMethod === 'upi' ? 'Generate QR' : 'Place Order'}
+                  {paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
+                   paymentMethod === 'paytm' ? 'Pay with Paytm' :
+                   paymentMethod === 'cashfree' ? 'Pay with Cashfree' :
+                   paymentMethod === 'phonepe' ? 'Pay with PhonePe' :
+                   paymentMethod === 'bharatpay' ? 'Pay with BharatPay' :
+                   paymentMethod === 'payyou' ? 'Pay with PayYou' :
+                   paymentMethod === 'upi' ? 'Generate UPI QR' : 'Place Order (COD)'}
                 </Button>
               </Card>
             </div>
