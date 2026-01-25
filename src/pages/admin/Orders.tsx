@@ -131,6 +131,7 @@ export default function AdminOrders() {
     const messages: Record<string, string> = {
       pending: 'Your order has been received and is pending confirmation.',
       awaiting_payment: 'We are waiting for your payment confirmation.',
+      awaiting_verification: 'Your payment is being verified by our team. You will be notified once confirmed.',
       confirmed: 'Great news! Your order has been confirmed and is being processed.',
       shipped: 'Your order has been shipped and is on the way!',
       delivered: 'Your order has been delivered. Thank you for shopping with us!',
@@ -253,6 +254,7 @@ For any queries, reply to this message.`;
   const statusColors: Record<string, string> = { 
     pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', 
     awaiting_payment: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+    awaiting_verification: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
     confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', 
     shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', 
     delivered: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', 
