@@ -22,6 +22,13 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 
+interface IpLocationData {
+  city?: string;
+  region?: string;
+  country?: string;
+  isp?: string;
+}
+
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +37,8 @@ export default function AdminOrders() {
   const [filterTab, setFilterTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedUtr, setCopiedUtr] = useState(false);
+  const [ipLocations, setIpLocations] = useState<Record<string, IpLocationData>>({});
+  const [loadingIpLocation, setLoadingIpLocation] = useState<string | null>(null);
 
   useEffect(() => { fetchOrders(); }, []);
 
@@ -37,6 +46,65 @@ export default function AdminOrders() {
     const { data } = await supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
     setOrders(data || []);
     setLoading(false);
+    
+    // Fetch IP locations for orders with customer_ip
+    if (data) {
+      const ipsToFetch = [...new Set(data.filter(o => o.customer_ip).map(o => o.customer_ip))];
+      fetchIpLocations(ipsToFetch);
+    }
+  };
+
+  const fetchIpLocations = async (ips: string[]) => {
+    const locations: Record<string, IpLocationData> = {};
+    
+    for (const ip of ips) {
+      if (ipLocations[ip]) continue; // Skip if already cached
+      
+      try {
+        // Using ip-api.com (free, no API key required)
+        const response = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,country,isp`);
+        const data = await response.json();
+        
+        if (data.city || data.country) {
+          locations[ip] = {
+            city: data.city,
+            region: data.regionName,
+            country: data.country,
+            isp: data.isp,
+          };
+        }
+      } catch (error) {
+        console.log(`Could not fetch location for IP ${ip}:`, error);
+      }
+    }
+    
+    setIpLocations(prev => ({ ...prev, ...locations }));
+  };
+
+  const fetchSingleIpLocation = async (ip: string) => {
+    if (ipLocations[ip]) return;
+    
+    setLoadingIpLocation(ip);
+    try {
+      const response = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,country,isp`);
+      const data = await response.json();
+      
+      if (data.city || data.country) {
+        setIpLocations(prev => ({
+          ...prev,
+          [ip]: {
+            city: data.city,
+            region: data.regionName,
+            country: data.country,
+            isp: data.isp,
+          }
+        }));
+      }
+    } catch (error) {
+      console.log(`Could not fetch location for IP ${ip}:`, error);
+    } finally {
+      setLoadingIpLocation(null);
+    }
   };
 
   const updateStatus = async (id: string, status: string, order?: any) => {
@@ -304,10 +372,15 @@ For any queries, reply to this message.`;
                               </p>
                             )}
                             {order.customer_ip && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <div className="text-xs text-muted-foreground flex items-center gap-1">
                                 <Globe className="h-3 w-3" />
-                                IP: {order.customer_ip}
-                              </p>
+                                <span>IP: {order.customer_ip}</span>
+                                {ipLocations[order.customer_ip] && (
+                                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                    • {ipLocations[order.customer_ip].city}, {ipLocations[order.customer_ip].country}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                           
@@ -480,10 +553,10 @@ For any queries, reply to this message.`;
 
               {/* Customer IP Tracking */}
               {selectedOrder.customer_ip && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-3">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Globe className="h-4 w-4" />
-                    Customer IP Address
+                    Customer IP Tracking
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="font-mono text-sm bg-background px-3 py-1.5 rounded font-semibold">
@@ -499,7 +572,47 @@ For any queries, reply to this message.`;
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
+                    {!ipLocations[selectedOrder.customer_ip] && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchSingleIpLocation(selectedOrder.customer_ip)}
+                        disabled={loadingIpLocation === selectedOrder.customer_ip}
+                      >
+                        {loadingIpLocation === selectedOrder.customer_ip ? 'Loading...' : 'Lookup Location'}
+                      </Button>
+                    )}
                   </div>
+                  
+                  {/* IP Location Details */}
+                  {ipLocations[selectedOrder.customer_ip] && (
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-blue-200 dark:border-blue-700">
+                      <div>
+                        <p className="text-xs text-muted-foreground">City</p>
+                        <p className="font-medium text-sm">
+                          {ipLocations[selectedOrder.customer_ip].city || 'Unknown'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Region</p>
+                        <p className="font-medium text-sm">
+                          {ipLocations[selectedOrder.customer_ip].region || 'Unknown'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Country</p>
+                        <p className="font-medium text-sm">
+                          {ipLocations[selectedOrder.customer_ip].country || 'Unknown'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">ISP</p>
+                        <p className="font-medium text-sm truncate" title={ipLocations[selectedOrder.customer_ip].isp}>
+                          {ipLocations[selectedOrder.customer_ip].isp || 'Unknown'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
