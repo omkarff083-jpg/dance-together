@@ -102,6 +102,9 @@ export function Footer() {
             <Link to="/privacy-policy" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
               Privacy Policy
             </Link>
+            <Link to="/terms-conditions" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
+              Terms & Conditions
+            </Link>
             <Link to="/help" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
               Help Center
             </Link>
