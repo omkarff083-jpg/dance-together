@@ -321,12 +321,6 @@ export default function ProductDetail() {
   const handleBuyNow = async () => {
     if (!product) return;
     
-    if (!user) {
-      toast.error('Please login to continue');
-      navigate('/auth');
-      return;
-    }
-    
     if (product.sizes.length > 0 && !selectedSize) {
       toast.error('Please select a size');
       return;

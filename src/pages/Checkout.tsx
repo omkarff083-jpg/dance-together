@@ -40,6 +40,7 @@ const numberToWords = (num: number): string => {
 
 const addressSchema = z.object({
   fullName: z.string().min(2, 'Name is required'),
+  email: z.string().email('Valid email is required'),
   phone: z.string().min(10, 'Valid phone number is required'),
   address: z.string().min(5, 'Address is required'),
   city: z.string().min(2, 'City is required'),
@@ -84,6 +85,7 @@ export default function Checkout() {
     resolver: zodResolver(addressSchema),
     defaultValues: {
       fullName: '',
+      email: '',
       phone: '',
       address: '',
       city: '',
@@ -93,11 +95,6 @@ export default function Checkout() {
   });
 
   useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
     // Check for Buy Now mode
     if (isBuyNowMode) {
       const storedItem = sessionStorage.getItem('buyNowItem');
@@ -107,7 +104,14 @@ export default function Checkout() {
         navigate('/products');
         return;
       }
-    } else if (items.length === 0) {
+    } else if (!user && items.length === 0) {
+      // For guests, check session storage for cart
+      const guestCart = sessionStorage.getItem('guestCart');
+      if (!guestCart) {
+        navigate('/products');
+        return;
+      }
+    } else if (user && items.length === 0 && !isBuyNowMode) {
       navigate('/cart');
       return;
     }
@@ -119,8 +123,10 @@ export default function Checkout() {
     script.onload = () => setRazorpayLoaded(true);
     document.body.appendChild(script);
 
-    // Fetch user profile and payment settings
-    fetchProfile();
+    // Fetch user profile (if logged in) and payment settings
+    if (user) {
+      fetchProfile();
+    }
     fetchPaymentSettings();
 
     return () => {
@@ -157,12 +163,13 @@ export default function Checkout() {
     
     const { data } = await supabase
       .from('profiles')
-      .select('full_name, phone, address')
+      .select('full_name, phone, address, email')
       .eq('id', user.id)
       .maybeSingle();
 
     if (data) {
       if (data.full_name) form.setValue('fullName', data.full_name);
+      if (data.email) form.setValue('email', data.email);
       if (data.phone) form.setValue('phone', data.phone);
     }
   };
@@ -178,24 +185,36 @@ export default function Checkout() {
   const createOrder = async (paymentId?: string, status: string = 'pending') => {
     const addressData = form.getValues();
     
-    // Create order
+    // Create order - support both authenticated and guest users
+    const orderData: any = {
+      total_amount: finalTotal,
+      status: status,
+      payment_method: paymentMethod,
+      payment_id: paymentId || null,
+      shipping_address: {
+        fullName: addressData.fullName,
+        email: addressData.email,
+        phone: addressData.phone,
+        address: addressData.address,
+        city: addressData.city,
+        state: addressData.state,
+        pincode: addressData.pincode,
+      },
+    };
+
+    // Add user_id only if logged in, otherwise store guest info
+    if (user) {
+      orderData.user_id = user.id;
+    } else {
+      orderData.user_id = null;
+      orderData.guest_email = addressData.email;
+      orderData.guest_name = addressData.fullName;
+      orderData.guest_phone = addressData.phone;
+    }
+
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .insert({
-        user_id: user!.id,
-        total_amount: finalTotal,
-        status: status,
-        payment_method: paymentMethod,
-        payment_id: paymentId || null,
-        shipping_address: {
-          fullName: addressData.fullName,
-          phone: addressData.phone,
-          address: addressData.address,
-          city: addressData.city,
-          state: addressData.state,
-          pincode: addressData.pincode,
-        },
-      })
+      .insert(orderData)
       .select()
       .single();
 
@@ -218,6 +237,12 @@ export default function Checkout() {
       .insert(orderItems);
 
     if (itemsError) throw itemsError;
+
+    // Store order ID in session for guest order tracking
+    if (!user) {
+      sessionStorage.setItem('guestOrderId', order.id);
+      sessionStorage.setItem('guestOrderEmail', addressData.email);
+    }
 
     return order;
   };
@@ -281,7 +306,7 @@ export default function Checkout() {
         prefill: {
           name: form.getValues('fullName'),
           contact: form.getValues('phone'),
-          email: user?.email,
+          email: form.getValues('email') || user?.email,
         },
         theme: {
           color: '#f97316',
@@ -386,7 +411,9 @@ export default function Checkout() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
   };
 
-  if (!user || (!isBuyNowMode && items.length === 0) || (isBuyNowMode && !buyNowItem)) {
+  // Allow checkout for both guests and logged-in users
+  const hasItems = isBuyNowMode ? !!buyNowItem : (user ? items.length > 0 : true);
+  if (!hasItems) {
     return null;
   }
 
@@ -415,12 +442,20 @@ export default function Checkout() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input id="phone" {...form.register('phone')} />
-                      {form.formState.errors.phone && (
-                        <p className="text-sm text-destructive">{form.formState.errors.phone.message}</p>
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input id="email" type="email" {...form.register('email')} />
+                      {form.formState.errors.email && (
+                        <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
                       )}
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input id="phone" {...form.register('phone')} />
+                    {form.formState.errors.phone && (
+                      <p className="text-sm text-destructive">{form.formState.errors.phone.message}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
