@@ -1038,154 +1038,236 @@ export default function CheckoutPayment() {
         </div>
       </div>
 
-      {/* UPI Payment Dialog */}
+      {/* UPI Payment Dialog - Advanced */}
       <Dialog open={showUpiDialog} onOpenChange={handleUpiDialogClose}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">Pay via UPI</DialogTitle>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                <QrCode className="h-5 w-5 text-white" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-xl">Complete Your Payment</DialogTitle>
             <DialogDescription className="text-center">
-              Pay ₹{finalTotal.toLocaleString()} using UPI
+              Secure UPI Payment • Order ID: #{pendingOrderId?.slice(0, 8).toUpperCase()}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-5">
-            <div className="text-center py-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border">
-              <p className="text-3xl font-bold text-primary">₹{finalTotal.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground mt-1">Rupees {numberToWords(finalTotal)} Only</p>
+          <div className="space-y-4">
+            {/* Amount Display */}
+            <div className="text-center py-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-xl border border-green-200 dark:border-green-800">
+              <p className="text-sm text-muted-foreground mb-1">Amount to Pay</p>
+              <p className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                ₹{finalTotal.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 italic">
+                ({numberToWords(finalTotal)} Rupees Only)
+              </p>
             </div>
 
+            {/* UPI Apps Grid */}
             <div className="space-y-3">
-              <p className="text-sm font-medium text-center">Pay using UPI App (Amount auto-filled)</p>
-              <div className="grid grid-cols-3 gap-2">
+              <p className="text-sm font-semibold text-center flex items-center justify-center gap-2">
+                <Smartphone className="h-4 w-4" />
+                Pay using UPI App
+                <span className="text-xs font-normal text-muted-foreground">(Amount auto-filled)</span>
+              </p>
+              <div className="grid grid-cols-3 gap-3">
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-purple-50 hover:border-purple-300"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-400 hover:shadow-md transition-all dark:hover:bg-purple-950/30"
                   onClick={() => openUpiApp('phonepe')}
                 >
-                  <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg">
                     <span className="text-white font-bold text-sm">Pe</span>
                   </div>
-                  <span className="text-[10px] font-medium">PhonePe</span>
+                  <span className="text-xs font-medium">PhonePe</span>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-blue-50 hover:border-blue-300"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-400 hover:shadow-md transition-all dark:hover:bg-blue-950/30"
                   onClick={() => openUpiApp('paytm')}
                 >
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-[8px]">Paytm</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-[9px]">Paytm</span>
                   </div>
-                  <span className="text-[10px] font-medium">Paytm</span>
+                  <span className="text-xs font-medium">Paytm</span>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-green-50 hover:border-green-300"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-green-50 hover:border-green-400 hover:shadow-md transition-all dark:hover:bg-green-950/30"
                   onClick={() => openUpiApp('gpay')}
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">G</span>
+                  <div className="w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center shadow-lg overflow-hidden">
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 via-green-500 to-yellow-400 flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">G</span>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-medium">GPay</span>
+                  <span className="text-xs font-medium">GPay</span>
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-blue-50 hover:border-blue-300"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-indigo-50 hover:border-indigo-400 hover:shadow-md transition-all dark:hover:bg-indigo-950/30"
                   onClick={() => openUpiApp('bhim')}
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-700 to-blue-900 flex items-center justify-center">
-                    <span className="text-white font-bold text-[8px]">BHIM</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-800 to-indigo-900 flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-[9px]">BHIM</span>
                   </div>
-                  <span className="text-[10px] font-medium">BHIM UPI</span>
+                  <span className="text-xs font-medium">BHIM UPI</span>
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-orange-50 hover:border-orange-300"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-orange-50 hover:border-orange-400 hover:shadow-md transition-all dark:hover:bg-orange-950/30"
                   onClick={() => openUpiApp('amazon')}
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center">
-                    <span className="text-white font-bold text-[8px]">₹Pay</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-xs">₹Pay</span>
                   </div>
-                  <span className="text-[10px] font-medium">Amazon</span>
+                  <span className="text-xs font-medium">Amazon</span>
                 </Button>
                 
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col items-center justify-center gap-1"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 hover:border-gray-400 hover:shadow-md transition-all dark:hover:bg-gray-800"
                   onClick={() => openUpiApp('any')}
                 >
-                  <Smartphone className="h-6 w-6 text-muted-foreground" />
-                  <span className="text-[10px] font-medium">Other UPI</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center shadow-lg">
+                    <Smartphone className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-xs font-medium">Other UPI</span>
                 </Button>
               </div>
             </div>
 
-            <div className="relative">
+            {/* Divider */}
+            <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-dashed" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or scan QR</span>
+                <span className="bg-background px-3 text-muted-foreground font-medium">OR SCAN QR</span>
               </div>
             </div>
 
+            {/* QR Code Section */}
             <div className="flex justify-center">
-              <div className="bg-white p-3 rounded-xl shadow-md border">
+              <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-gray-100 relative">
                 <img 
                   src={generateUpiQR()} 
                   alt="UPI QR Code" 
-                  className="w-40 h-40"
+                  className="w-44 h-44 rounded-lg"
                 />
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
+                  Scan to Pay
+                </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-2 bg-secondary p-3 rounded-lg">
-              <span className="flex-1 font-mono text-xs text-center">{paymentSettings?.upi_id}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={copyUpiId}
-              >
-                {upiCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              </Button>
+            {/* UPI ID */}
+            <div className="bg-secondary/80 p-3 rounded-xl border">
+              <p className="text-xs text-muted-foreground text-center mb-2">UPI ID</p>
+              <div className="flex items-center gap-2 bg-background p-2 rounded-lg">
+                <span className="flex-1 font-mono text-sm text-center font-medium truncate">
+                  {paymentSettings?.upi_id}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={copyUpiId}
+                >
+                  {upiCopied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-center">Enter UTR Number for Quick Verification</p>
-              <div className="flex gap-2">
+            {/* Divider */}
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-dashed" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-3 text-muted-foreground font-medium">AFTER PAYMENT</span>
+              </div>
+            </div>
+
+            {/* UTR Input Section */}
+            <div className="space-y-3 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border border-primary/20">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Check className="h-3 w-3 text-primary" />
+                </div>
+                <p className="text-sm font-semibold">Enter UTR for Quick Verification</p>
+              </div>
+              
+              <div className="space-y-2">
                 <Input
                   placeholder="Enter 12-digit UTR number"
                   value={utrNumber}
                   onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                  className="font-mono text-center"
+                  className="font-mono text-center text-lg h-12 tracking-wider border-2 focus:border-primary"
                   maxLength={12}
                 />
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <span className={`w-2 h-2 rounded-full ${utrNumber.length >= 10 ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    {utrNumber.length}/12 digits
+                  </span>
+                  <span>Find UTR in payment history</span>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                You can find UTR in your UPI app payment history
-              </p>
+              
+              <div className="bg-background/80 p-3 rounded-lg border text-xs space-y-1">
+                <p className="font-medium text-center">📱 Where to find UTR?</p>
+                <ul className="text-muted-foreground space-y-0.5">
+                  <li>• Open your UPI app → Payment History</li>
+                  <li>• Find this transaction → Copy UTR/Reference ID</li>
+                  <li>• It's usually a 12-digit number</li>
+                </ul>
+              </div>
             </div>
 
-            <div className="space-y-2">
+            {/* Action Buttons */}
+            <div className="space-y-3 pt-2">
               <Button 
                 onClick={() => confirmUpiPayment(true)} 
-                className="w-full" 
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700" 
                 size="lg"
                 disabled={utrNumber.length < 10}
               >
-                Verify with UTR ✓
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Submit UTR & Confirm Order
               </Button>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-background px-2 text-muted-foreground">Don't have UTR?</span>
+                </div>
+              </div>
+              
               <Button 
                 onClick={() => confirmUpiPayment(false)} 
                 variant="outline" 
                 className="w-full"
               >
-                I've Paid (Verify Later)
+                I've Paid, Verify Later
               </Button>
+              
+              <p className="text-[10px] text-muted-foreground text-center">
+                ⚠️ Orders without UTR may take longer to verify (up to 24 hours)
+              </p>
             </div>
           </div>
         </DialogContent>
