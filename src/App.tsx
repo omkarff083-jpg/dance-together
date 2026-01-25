@@ -32,6 +32,7 @@ import AdminSupport from "./pages/admin/Support";
 import AdminUsers from "./pages/admin/Users";
 import AdminPincodes from "./pages/admin/Pincodes";
 import AdminCoupons from "./pages/admin/Coupons";
+import AdminUtrManagement from "./pages/admin/UtrManagement";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/admin/support" element={<AdminSupport />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/coupons" element={<AdminCoupons />} />
+              <Route path="/admin/utr" element={<AdminUtrManagement />} />
               
               
               <Route path="*" element={<NotFound />} />

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, FolderTree, ShoppingCart, Settings, MessageCircle, ArrowLeft, Users, LogOut, MapPin, Ticket } from 'lucide-react';
+import { LayoutDashboard, Package, FolderTree, ShoppingCart, Settings, MessageCircle, ArrowLeft, Users, LogOut, MapPin, Ticket, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,6 +13,7 @@ const navItems = [
   { name: 'Products', href: '/admin/products', icon: Package },
   { name: 'Categories', href: '/admin/categories', icon: FolderTree },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+  { name: 'UTR Verification', href: '/admin/utr', icon: Smartphone },
   { name: 'Coupons', href: '/admin/coupons', icon: Ticket },
   { name: 'Pincodes', href: '/admin/pincodes', icon: MapPin },
   { name: 'Support', href: '/admin/support', icon: MessageCircle },
