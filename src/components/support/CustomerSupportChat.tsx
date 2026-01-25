@@ -258,14 +258,14 @@ export function CustomerSupportChat() {
 
   return (
     <>
-      {/* Chat Button */}
+      {/* Chat Button - positioned at bottom right, above mobile nav */}
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg z-40"
           size="icon"
         >
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-5 w-5 md:h-6 md:w-6" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
               {unreadCount}
@@ -278,8 +278,8 @@ export function CustomerSupportChat() {
       {isOpen && (
         <div
           className={cn(
-            "fixed bottom-6 right-6 w-80 sm:w-96 bg-background border rounded-lg shadow-2xl z-50 flex flex-col transition-all",
-            isMinimized ? "h-14" : "h-[500px]"
+            "fixed bottom-20 right-4 md:bottom-6 md:right-6 w-[calc(100%-2rem)] sm:w-96 bg-background border rounded-lg shadow-2xl z-40 flex flex-col transition-all",
+            isMinimized ? "h-14" : "h-[70vh] max-h-[500px]"
           )}
         >
           {/* Header */}
