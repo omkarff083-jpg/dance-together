@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.support-ai-reply]
 verify_jwt = true
+
+[functions.cancel-stale-orders]
+verify_jwt = false
+
+[functions.image-search]
+verify_jwt = false

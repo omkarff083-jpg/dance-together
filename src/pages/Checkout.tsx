@@ -94,6 +94,7 @@ export default function Checkout() {
   } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [welcomeCouponChecked, setWelcomeCouponChecked] = useState(false);
 
   const isBuyNowMode = searchParams.get('mode') === 'buynow';
 
@@ -252,7 +253,7 @@ export default function Checkout() {
     }
   };
 
-  // Calculate totals based on mode
+  // Calculate totals based on mode - moved up for use in welcome coupon logic
   const checkoutItems = isBuyNowMode && buyNowItem ? [buyNowItem] : items;
   const checkoutTotal = isBuyNowMode && buyNowItem
     ? (buyNowItem.product.sale_price || buyNowItem.product.price) * buyNowItem.quantity
@@ -260,6 +261,100 @@ export default function Checkout() {
   const shipping = checkoutTotal >= 999 ? 0 : 99;
   const subtotalWithShipping = checkoutTotal + shipping;
   const finalTotal = subtotalWithShipping - discountAmount;
+
+  // Check and auto-apply welcome coupon for first-time users
+  const checkAndApplyWelcomeCoupon = async () => {
+    if (!user || welcomeCouponChecked || appliedCoupon) return;
+    
+    setWelcomeCouponChecked(true);
+    
+    try {
+      // Check if user has any previous orders
+      const { data: previousOrders, error: orderError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('user_id', user.id)
+        .neq('status', 'cancelled')
+        .limit(1);
+
+      if (orderError) {
+        console.log('Error checking previous orders:', orderError);
+        return;
+      }
+
+      // If user has previous orders, don't apply welcome coupon
+      if (previousOrders && previousOrders.length > 0) {
+        console.log('User has previous orders, not applying welcome coupon');
+        return;
+      }
+
+      // Check if welcome coupon exists and is valid
+      const { data: welcomeCoupon, error: couponError } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', 'WELCOME10')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (couponError || !welcomeCoupon) {
+        console.log('Welcome coupon not found or inactive');
+        return;
+      }
+
+      // Validate coupon dates
+      if (welcomeCoupon.valid_from && new Date(welcomeCoupon.valid_from) > new Date()) {
+        return;
+      }
+      if (welcomeCoupon.valid_until && new Date(welcomeCoupon.valid_until) < new Date()) {
+        return;
+      }
+
+      // Check usage limit
+      if (welcomeCoupon.usage_limit && welcomeCoupon.used_count >= welcomeCoupon.usage_limit) {
+        return;
+      }
+
+      // Auto-apply the welcome coupon
+      setCouponCode('WELCOME10');
+      
+      // Calculate discount
+      let discount = 0;
+      if (welcomeCoupon.discount_type === 'percentage') {
+        discount = (checkoutTotal * welcomeCoupon.discount_value) / 100;
+      } else {
+        discount = welcomeCoupon.discount_value;
+      }
+
+      // Apply max discount cap
+      if (welcomeCoupon.max_discount_amount && discount > welcomeCoupon.max_discount_amount) {
+        discount = welcomeCoupon.max_discount_amount;
+      }
+
+      // Don't allow discount more than order total
+      discount = Math.min(discount, subtotalWithShipping);
+
+      setAppliedCoupon({
+        id: welcomeCoupon.id,
+        code: welcomeCoupon.code,
+        discount_type: welcomeCoupon.discount_type as 'percentage' | 'fixed',
+        discount_value: welcomeCoupon.discount_value,
+        max_discount_amount: welcomeCoupon.max_discount_amount,
+      });
+      setDiscountAmount(discount);
+      toast.success(`🎉 Welcome! First-order discount applied - You save ₹${discount.toLocaleString()}!`, {
+        duration: 5000,
+      });
+    } catch (error) {
+      console.log('Error checking welcome coupon:', error);
+    }
+  };
+
+  // Effect to auto-apply welcome coupon when checkout loads
+  useEffect(() => {
+    if (user && checkoutTotal > 0 && !welcomeCouponChecked) {
+      checkAndApplyWelcomeCoupon();
+    }
+  }, [user, checkoutTotal, welcomeCouponChecked]);
 
   // Apply coupon handler
   const handleApplyCoupon = async () => {
