@@ -18,6 +18,7 @@ import Orders from "./pages/Orders";
 import OrderTracking from "./pages/OrderTracking";
 import HelpCenter from "./pages/HelpCenter";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
 import NotFound from "./pages/NotFound";
 import AdminOwner from "./pages/AdminOwner";
 
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/orders/:orderId" element={<OrderTracking />} />
               <Route path="/help" element={<HelpCenter />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-conditions" element={<TermsConditions />} />
               
               {/* Hidden Admin Login */}
               <Route path="/adminowner" element={<AdminOwner />} />
