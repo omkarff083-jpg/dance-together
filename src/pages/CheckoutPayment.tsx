@@ -571,7 +571,7 @@ export default function CheckoutPayment() {
       const prefix = paymentMethod === 'razorpay_upi' ? 'TRID:' : 'UTR:';
       await supabase
         .from('orders')
-        .update({ payment_id: `${prefix}${utrNumber.trim()}`, status: 'pending' })
+        .update({ payment_id: `${prefix}${utrNumber.trim()}`, status: 'awaiting_verification' })
         .eq('id', pendingOrderId);
       await clearCheckoutItems();
       setShowUpiDialog(false);

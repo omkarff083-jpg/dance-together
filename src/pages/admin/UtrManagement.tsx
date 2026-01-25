@@ -182,6 +182,7 @@ export default function UtrManagement() {
   const statusColors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
     awaiting_payment: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+    awaiting_verification: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
     confirmed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
     delivered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
@@ -194,7 +195,8 @@ export default function UtrManagement() {
     
     // Filter by tab
     if (filterTab === 'pending') {
-      if (order.status !== 'awaiting_payment') return false;
+      // Show awaiting_verification orders (UTR submitted, waiting for admin verification)
+      if (order.status !== 'awaiting_verification' && order.status !== 'awaiting_payment') return false;
     } else if (filterTab === 'with_utr') {
       if (!utr) return false;
     } else if (filterTab === 'verified') {
