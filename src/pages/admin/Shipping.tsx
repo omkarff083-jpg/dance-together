@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Truck, Package, CreditCard, Save } from 'lucide-react';
+import { Loader2, Truck, Package, CreditCard, Save, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,15 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface ShippingSettings {
   shipping_enabled: boolean;
@@ -42,6 +51,12 @@ export default function AdminShipping() {
   const [productSearch, setProductSearch] = useState('');
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [productShippingValue, setProductShippingValue] = useState('');
+  
+  // Bulk edit state
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [bulkShippingValue, setBulkShippingValue] = useState('');
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   const [settings, setSettings] = useState<ShippingSettings>({
     shipping_enabled: true,
@@ -146,6 +161,59 @@ export default function AdminShipping() {
       toast.success('Product shipping charge updated!');
     } catch (error) {
       toast.error('Failed to update product shipping');
+    }
+  };
+
+  // Toggle product selection
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProducts(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  // Select/Deselect all filtered products
+  const toggleSelectAll = () => {
+    if (selectedProducts.length === filteredProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    }
+  };
+
+  // Bulk update shipping charges
+  const handleBulkUpdate = async () => {
+    if (selectedProducts.length === 0) {
+      toast.error('No products selected');
+      return;
+    }
+
+    setBulkUpdating(true);
+    try {
+      const newCharge = bulkShippingValue === '' ? null : parseFloat(bulkShippingValue);
+      
+      const { error } = await supabase
+        .from('products')
+        .update({ shipping_charge: newCharge } as any)
+        .in('id', selectedProducts);
+
+      if (error) throw error;
+
+      // Update local state
+      setProducts(prev => prev.map(p => 
+        selectedProducts.includes(p.id) ? { ...p, shipping_charge: newCharge } : p
+      ));
+
+      toast.success(`Updated shipping for ${selectedProducts.length} products!`);
+      setSelectedProducts([]);
+      setShowBulkEditDialog(false);
+      setBulkShippingValue('');
+    } catch (error) {
+      console.error('Error bulk updating:', error);
+      toast.error('Failed to update products');
+    } finally {
+      setBulkUpdating(false);
     }
   };
 
@@ -333,19 +401,52 @@ export default function AdminShipping() {
                           </CardDescription>
                         </div>
                       </div>
+                      {selectedProducts.length > 0 && (
+                        <Button onClick={() => setShowBulkEditDialog(true)}>
+                          <CheckSquare className="h-4 w-4 mr-2" />
+                          Bulk Edit ({selectedProducts.length})
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Input
-                      placeholder="Search products..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                    />
+                    <div className="flex gap-4">
+                      <Input
+                        placeholder="Search products..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={toggleSelectAll}
+                        className="whitespace-nowrap"
+                      >
+                        {selectedProducts.length === filteredProducts.length && filteredProducts.length > 0 ? (
+                          <>
+                            <Square className="h-4 w-4 mr-2" />
+                            Deselect All
+                          </>
+                        ) : (
+                          <>
+                            <CheckSquare className="h-4 w-4 mr-2" />
+                            Select All
+                          </>
+                        )}
+                      </Button>
+                    </div>
                     
                     <div className="rounded-md border max-h-[400px] overflow-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-12">
+                              <Checkbox 
+                                checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                                onCheckedChange={toggleSelectAll}
+                              />
+                            </TableHead>
                             <TableHead>Product</TableHead>
                             <TableHead>Price</TableHead>
                             <TableHead>Shipping Charge</TableHead>
@@ -355,13 +456,19 @@ export default function AdminShipping() {
                         <TableBody>
                           {filteredProducts.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                                 No products found
                               </TableCell>
                             </TableRow>
                           ) : (
                             filteredProducts.map((product) => (
-                              <TableRow key={product.id}>
+                              <TableRow key={product.id} className={selectedProducts.includes(product.id) ? 'bg-primary/5' : ''}>
+                                <TableCell>
+                                  <Checkbox 
+                                    checked={selectedProducts.includes(product.id)}
+                                    onCheckedChange={() => toggleProductSelection(product.id)}
+                                  />
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-3">
                                     {product.images?.[0] && (
@@ -468,6 +575,53 @@ export default function AdminShipping() {
           </div>
         )}
       </div>
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={showBulkEditDialog} onOpenChange={setShowBulkEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Edit Shipping Charges</DialogTitle>
+            <DialogDescription>
+              Set shipping charge for {selectedProducts.length} selected products
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-shipping">Shipping Charge (₹)</Label>
+              <Input
+                id="bulk-shipping"
+                type="number"
+                value={bulkShippingValue}
+                onChange={(e) => setBulkShippingValue(e.target.value)}
+                placeholder="Leave empty to use global charge"
+              />
+              <p className="text-xs text-muted-foreground">
+                Empty = Use global shipping charge (₹{settings.shipping_charge})
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkUpdate} disabled={bulkUpdating}>
+              {bulkUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Update {selectedProducts.length} Products
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

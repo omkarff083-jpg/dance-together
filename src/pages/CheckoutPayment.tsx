@@ -75,6 +75,19 @@ interface PaymentSettings {
   cod_enabled: boolean;
   cod_display_name: string | null;
   cod_display_description: string | null;
+  // Shipping settings
+  shipping_enabled: boolean;
+  shipping_charge: number;
+  free_shipping_threshold: number;
+  razorpay_shipping_charge: number;
+  upi_shipping_charge: number;
+  razorpay_upi_shipping_charge: number;
+  paytm_shipping_charge: number;
+  cashfree_shipping_charge: number;
+  bharatpay_shipping_charge: number;
+  payyou_shipping_charge: number;
+  phonepe_shipping_charge: number;
+  cod_shipping_charge: number;
 }
 
 declare global {
@@ -178,12 +191,26 @@ export default function CheckoutPayment() {
   const fetchPaymentSettings = async () => {
     const { data } = await supabase
       .from('payment_settings')
-      .select('razorpay_enabled, razorpay_display_name, razorpay_display_description, razorpay_upi_enabled, razorpay_upi_id, razorpay_upi_display_name, razorpay_upi_display_description, upi_enabled, upi_id, upi_display_name, upi_display_description, paytm_enabled, paytm_display_name, paytm_display_description, cashfree_enabled, cashfree_display_name, cashfree_display_description, bharatpay_enabled, bharatpay_display_name, bharatpay_display_description, payyou_enabled, payyou_display_name, payyou_display_description, phonepe_enabled, phonepe_display_name, phonepe_display_description, cod_enabled, cod_display_name, cod_display_description')
+      .select('razorpay_enabled, razorpay_display_name, razorpay_display_description, razorpay_upi_enabled, razorpay_upi_id, razorpay_upi_display_name, razorpay_upi_display_description, upi_enabled, upi_id, upi_display_name, upi_display_description, paytm_enabled, paytm_display_name, paytm_display_description, cashfree_enabled, cashfree_display_name, cashfree_display_description, bharatpay_enabled, bharatpay_display_name, bharatpay_display_description, payyou_enabled, payyou_display_name, payyou_display_description, phonepe_enabled, phonepe_display_name, phonepe_display_description, cod_enabled, cod_display_name, cod_display_description, shipping_enabled, shipping_charge, free_shipping_threshold, razorpay_shipping_charge, upi_shipping_charge, razorpay_upi_shipping_charge, paytm_shipping_charge, cashfree_shipping_charge, bharatpay_shipping_charge, payyou_shipping_charge, phonepe_shipping_charge, cod_shipping_charge')
       .limit(1)
       .maybeSingle();
     
     if (data) {
-      setPaymentSettings(data as PaymentSettings);
+      setPaymentSettings({
+        ...data,
+        shipping_enabled: (data as any).shipping_enabled ?? true,
+        shipping_charge: (data as any).shipping_charge ?? 99,
+        free_shipping_threshold: (data as any).free_shipping_threshold ?? 999,
+        razorpay_shipping_charge: (data as any).razorpay_shipping_charge ?? 0,
+        upi_shipping_charge: (data as any).upi_shipping_charge ?? 0,
+        razorpay_upi_shipping_charge: (data as any).razorpay_upi_shipping_charge ?? 0,
+        paytm_shipping_charge: (data as any).paytm_shipping_charge ?? 0,
+        cashfree_shipping_charge: (data as any).cashfree_shipping_charge ?? 0,
+        bharatpay_shipping_charge: (data as any).bharatpay_shipping_charge ?? 0,
+        payyou_shipping_charge: (data as any).payyou_shipping_charge ?? 0,
+        phonepe_shipping_charge: (data as any).phonepe_shipping_charge ?? 0,
+        cod_shipping_charge: (data as any).cod_shipping_charge ?? 0,
+      } as PaymentSettings);
       if (data.razorpay_enabled) {
         setPaymentMethod('razorpay');
       } else if ((data as any).razorpay_upi_enabled && (data as any).razorpay_upi_id) {
@@ -214,7 +241,63 @@ export default function CheckoutPayment() {
   const checkoutTotal = isBuyNowMode && buyNowItem
     ? (buyNowItem.product.sale_price || buyNowItem.product.price) * buyNowItem.quantity
     : totalAmount;
-  const shipping = checkoutTotal >= 999 ? 0 : 99;
+
+  // Calculate shipping based on admin settings
+  const calculateShipping = () => {
+    // If shipping is disabled globally, return 0
+    if (!paymentSettings?.shipping_enabled) {
+      return 0;
+    }
+
+    // Check for product-level shipping charges first
+    let productShipping = 0;
+    let hasProductShipping = false;
+    checkoutItems.forEach(item => {
+      const productCharge = (item.product as any)?.shipping_charge;
+      if (productCharge !== null && productCharge !== undefined) {
+        productShipping += productCharge * item.quantity;
+        hasProductShipping = true;
+      }
+    });
+
+    // If any product has custom shipping, use that
+    if (hasProductShipping) {
+      // Add gateway-specific charge if applicable
+      const gatewayCharge = getGatewayShippingCharge();
+      return productShipping + gatewayCharge;
+    }
+
+    // Check free shipping threshold
+    const freeThreshold = paymentSettings?.free_shipping_threshold || 0;
+    if (freeThreshold > 0 && checkoutTotal >= freeThreshold) {
+      return 0;
+    }
+
+    // Use global shipping charge + gateway-specific charge
+    const globalCharge = paymentSettings?.shipping_charge || 0;
+    const gatewayCharge = getGatewayShippingCharge();
+    return globalCharge + gatewayCharge;
+  };
+
+  // Get gateway-specific shipping charge
+  const getGatewayShippingCharge = () => {
+    if (!paymentSettings) return 0;
+    
+    switch (paymentMethod) {
+      case 'razorpay': return paymentSettings.razorpay_shipping_charge || 0;
+      case 'upi': return paymentSettings.upi_shipping_charge || 0;
+      case 'razorpay_upi': return paymentSettings.razorpay_upi_shipping_charge || 0;
+      case 'paytm': return paymentSettings.paytm_shipping_charge || 0;
+      case 'cashfree': return paymentSettings.cashfree_shipping_charge || 0;
+      case 'bharatpay': return paymentSettings.bharatpay_shipping_charge || 0;
+      case 'payyou': return paymentSettings.payyou_shipping_charge || 0;
+      case 'phonepe': return paymentSettings.phonepe_shipping_charge || 0;
+      case 'cod': return paymentSettings.cod_shipping_charge || 0;
+      default: return 0;
+    }
+  };
+
+  const shipping = calculateShipping();
   const subtotalWithShipping = checkoutTotal + shipping;
   const finalTotal = subtotalWithShipping - discountAmount;
 
