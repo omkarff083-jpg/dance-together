@@ -18,7 +18,77 @@ export function HomeHeader() {
   const { totalItems } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [isImageSearchOpen, setIsImageSearchOpen] = useState(false);
+  const [location, setLocation] = useState<string>('Detecting...');
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const navigate = useNavigate();
+
+  // Auto-detect location on mount
+  useEffect(() => {
+    const getLocation = async () => {
+      if (!navigator.geolocation) {
+        setLocation('Location not supported');
+        setIsLoadingLocation(false);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            // Use reverse geocoding to get address
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+            );
+            const data = await response.json();
+            
+            // Extract city/town/village and state
+            const address = data.address;
+            const city = address.city || address.town || address.village || address.suburb || address.county || '';
+            const state = address.state || '';
+            const pincode = address.postcode || '';
+            
+            if (city && pincode) {
+              setLocation(`${city}, ${pincode}`);
+            } else if (city && state) {
+              setLocation(`${city}, ${state}`);
+            } else if (city) {
+              setLocation(city);
+            } else {
+              setLocation('Location detected');
+            }
+          } catch (error) {
+            console.error('Geocoding error:', error);
+            setLocation('Location detected');
+          }
+          setIsLoadingLocation(false);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              setLocation('Enable location access');
+              break;
+            case error.POSITION_UNAVAILABLE:
+              setLocation('Location unavailable');
+              break;
+            case error.TIMEOUT:
+              setLocation('Location timeout');
+              break;
+            default:
+              setLocation('Your Location');
+          }
+          setIsLoadingLocation(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // Cache for 5 minutes
+        }
+      );
+    };
+
+    getLocation();
+  }, []);
 
   // Handle voice search result
   const handleVoiceResult = useCallback((transcript: string) => {
@@ -175,8 +245,10 @@ export function HomeHeader() {
       {/* Delivery Location */}
       <div className="px-4 pb-2">
         <button className="flex items-center gap-2 text-sm text-foreground hover:text-accent transition-colors">
-          <MapPin className="h-4 w-4 text-accent" />
-          <span>Delivering to <strong>Your Location</strong></span>
+          <MapPin className={cn("h-4 w-4 text-accent", isLoadingLocation && "animate-pulse")} />
+          <span>
+            Delivering to <strong>{location}</strong>
+          </span>
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
