@@ -34,7 +34,7 @@ export function Footer() {
               {[
                 { name: 'All Products', href: '/products' },
                 { name: 'Categories', href: '/categories' },
-                { name: 'Featured', href: '/products?featured=true' },
+                { name: 'Help Center', href: '/help' },
                 { name: 'Sale', href: '/products?sale=true' },
               ].map((link) => (
                 <li key={link.name}>
@@ -99,12 +99,12 @@ export function Footer() {
             © {new Date().getFullYear()} LUXE. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
+            <Link to="/privacy-policy" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
               Privacy Policy
-            </a>
-            <a href="#" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
-              Terms of Service
-            </a>
+            </Link>
+            <Link to="/help" className="text-primary-foreground/50 text-sm hover:text-primary-foreground transition-colors">
+              Help Center
+            </Link>
           </div>
         </div>
       </div>

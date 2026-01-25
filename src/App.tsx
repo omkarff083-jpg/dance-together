@@ -16,6 +16,8 @@ import Wishlist from "./pages/Wishlist";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
 import OrderTracking from "./pages/OrderTracking";
+import HelpCenter from "./pages/HelpCenter";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import AdminOwner from "./pages/AdminOwner";
 
@@ -47,6 +49,8 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:orderId" element={<OrderTracking />} />
+              <Route path="/help" element={<HelpCenter />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               
               {/* Hidden Admin Login */}
               <Route path="/adminowner" element={<AdminOwner />} />
