@@ -7,7 +7,6 @@ import { CategoryCircle } from '@/components/home/CategoryCircle';
 import { MeeshoProductCard } from '@/components/home/MeeshoProductCard';
 import { FilterBar } from '@/components/home/FilterBar';
 import { MobileBottomNav } from '@/components/home/MobileBottomNav';
-import { CustomerSupportChat } from '@/components/support/CustomerSupportChat';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
@@ -158,8 +157,7 @@ export default function Home() {
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
 
-      {/* Customer Support Chat */}
-      <CustomerSupportChat />
+      {/* Customer Support Chat is rendered globally in App.tsx */}
     </div>
   );
 }

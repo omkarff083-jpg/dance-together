@@ -963,10 +963,41 @@ export default function Checkout() {
               </Button>
             </div>
 
-            {/* Confirm Button */}
-            <Button onClick={() => confirmUpiPayment()} className="w-full" size="lg">
-              I've Made the Payment ✓
-            </Button>
+            {/* UTR Verification Section */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-center">Enter UTR Number for Quick Verification</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter 12-digit UTR number"
+                  value={utrNumber}
+                  onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                  className="font-mono text-center"
+                  maxLength={12}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                You can find UTR in your UPI app payment history
+              </p>
+            </div>
+
+            {/* Confirm Buttons */}
+            <div className="space-y-2">
+              <Button 
+                onClick={() => confirmUpiPayment(true)} 
+                className="w-full" 
+                size="lg"
+                disabled={utrNumber.length < 10}
+              >
+                Verify with UTR ✓
+              </Button>
+              <Button 
+                onClick={() => confirmUpiPayment(false)} 
+                variant="outline" 
+                className="w-full"
+              >
+                I've Paid (Verify Later)
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
