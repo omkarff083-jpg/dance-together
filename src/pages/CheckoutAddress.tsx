@@ -279,18 +279,18 @@ export default function CheckoutAddress() {
             </div>
 
             {/* Order Summary - Fixed at bottom on mobile */}
-            <div className="fixed bottom-14 left-0 right-0 z-40 bg-background border-t border-border p-3 md:p-0 md:relative md:bottom-auto md:border-t-0 lg:block">
-              <Card className="p-3 md:p-6 md:sticky md:top-24">
+            <div className="fixed bottom-14 left-0 right-0 z-40 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:relative md:bottom-auto md:border-t-0 md:shadow-none lg:block">
+              <Card className="border-0 md:border rounded-none md:rounded-lg p-0 md:p-6 md:sticky md:top-24">
                 {/* Collapsible summary on mobile */}
-                <div className="md:hidden">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
+                <div className="md:hidden px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs text-muted-foreground">{checkoutItems.length} item(s)</p>
-                      <p className="font-semibold">₹{(checkoutTotal + shipping).toLocaleString()}</p>
+                      <p className="font-bold text-lg">₹{(checkoutTotal + shipping).toLocaleString()}</p>
                     </div>
-                    <Button type="submit" size="sm">
+                    <Button type="submit" className="shrink-0">
                       Continue
-                      <ArrowRight className="ml-1 h-3 w-3" />
+                      <ArrowRight className="ml-1 h-4 w-4" />
                     </Button>
                   </div>
                 </div>

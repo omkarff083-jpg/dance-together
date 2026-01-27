@@ -435,6 +435,24 @@ export default function ProductDetail() {
         <div className="grid md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
           {/* Images */}
           <div className="space-y-3 md:space-y-4">
+            {/* Thumbnail strip above main image on mobile - horizontal scroll */}
+            {images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 md:hidden">
+                {images.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`flex-shrink-0 w-16 h-16 overflow-hidden rounded-lg border-2 transition-colors ${
+                      selectedImage === index ? 'border-primary' : 'border-transparent'
+                    }`}
+                  >
+                    <img src={image} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* Main Image */}
             <div className="aspect-square overflow-hidden rounded-lg bg-secondary">
               <img
                 src={images[selectedImage]}
@@ -442,8 +460,10 @@ export default function ProductDetail() {
                 className="w-full h-full object-cover"
               />
             </div>
+            
+            {/* Thumbnail grid for desktop only */}
             {images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
+              <div className="hidden md:grid grid-cols-4 gap-2">
                 {images.map((image, index) => (
                   <button
                     key={index}
@@ -614,18 +634,18 @@ export default function ProductDetail() {
         </div>
 
         {/* Fixed Bottom Actions for Mobile */}
-        <div className="fixed bottom-14 left-0 right-0 bg-background border-t p-3 md:hidden z-40">
-          <div className="flex items-center gap-2">
+        <div className="fixed bottom-14 left-0 right-0 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden z-40">
+          <div className="flex items-center gap-2 px-4 py-3">
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10 shrink-0"
+              className="h-11 w-11 shrink-0"
               onClick={handleAddToWishlist}
             >
               <Heart className="h-5 w-5" />
             </Button>
             <Button
-              className="flex-1 h-10"
+              className="flex-1 h-11"
               onClick={handleAddToCart}
               disabled={product.stock === 0}
             >
@@ -633,7 +653,7 @@ export default function ProductDetail() {
               {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
             </Button>
             <Button
-              className="flex-1 h-10 bg-accent text-accent-foreground hover:bg-accent/90"
+              className="flex-1 h-11 bg-accent text-accent-foreground hover:bg-accent/90"
               onClick={handleBuyNow}
               disabled={product.stock === 0}
             >

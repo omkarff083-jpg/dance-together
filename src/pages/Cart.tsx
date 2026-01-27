@@ -199,18 +199,18 @@ export default function Cart() {
         </div>
 
         {/* Fixed Bottom Summary for Mobile */}
-        <div className="fixed bottom-14 left-0 right-0 bg-background border-t p-3 md:hidden z-40">
-          <div className="flex items-center justify-between gap-3">
-            <div>
+        <div className="fixed bottom-14 left-0 right-0 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden z-40">
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
               <p className="font-bold text-lg">₹{finalTotal.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">
                 {items.length} item(s) • {shipping === 0 ? 'Free delivery' : `+₹${shipping}`}
               </p>
             </div>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0" asChild>
               <Link to="/checkout">
-                Checkout
-                <ArrowRight className="ml-2 h-4 w-4" />
+                Continue
+                <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </div>
