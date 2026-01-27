@@ -61,20 +61,20 @@ export default function Cart() {
 
   return (
     <Layout>
-      <div className="container py-8">
-        <h1 className="font-display text-3xl font-bold mb-8">Shopping Cart</h1>
+      <div className="container px-4 py-4 md:py-8 pb-40 md:pb-8">
+        <h1 className="font-display text-xl md:text-3xl font-bold mb-4 md:mb-8">Shopping Cart</h1>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-4 md:gap-8">
           {/* Cart Items */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3 md:space-y-4">
             {items.map((item) => {
               const price = item.product?.sale_price || item.product?.price || 0;
               const imageUrl = item.product?.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200';
 
               return (
-                <Card key={item.id} className="p-4">
-                  <div className="flex gap-4">
-                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+                <Card key={item.id} className="p-3 md:p-4">
+                  <div className="flex gap-3">
+                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
                       <img
                         src={imageUrl}
                         alt={item.product?.name}
@@ -83,16 +83,48 @@ export default function Cart() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{item.product?.name}</h3>
-                      <div className="text-sm text-muted-foreground mt-1">
+                      <h3 className="font-medium text-sm md:text-base truncate">{item.product?.name}</h3>
+                      <div className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">
                         {item.size && <span>Size: {item.size}</span>}
                         {item.size && item.color && <span> • </span>}
-                        {item.color && <span>Color: {item.color}</span>}
+                        {item.color && <span>{item.color}</span>}
                       </div>
-                      <p className="font-semibold mt-2">₹{price.toLocaleString()}</p>
+                      <p className="font-semibold text-sm md:text-base mt-1 md:mt-2">₹{price.toLocaleString()}</p>
+                      
+                      {/* Mobile quantity controls */}
+                      <div className="flex items-center justify-between mt-2 md:hidden">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-6 text-center text-sm">{item.quantity}</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive h-7 px-2"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
-                    <div className="flex flex-col items-end justify-between">
+                    {/* Desktop controls */}
+                    <div className="hidden md:flex flex-col items-end justify-between">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -128,8 +160,8 @@ export default function Cart() {
             })}
           </div>
 
-          {/* Order Summary */}
-          <div>
+          {/* Order Summary - Desktop */}
+          <div className="hidden md:block">
             <Card className="p-6 sticky top-24">
               <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
               
@@ -163,6 +195,24 @@ export default function Cart() {
                 </Link>
               </Button>
             </Card>
+          </div>
+        </div>
+
+        {/* Fixed Bottom Summary for Mobile */}
+        <div className="fixed bottom-14 left-0 right-0 bg-background border-t p-3 md:hidden z-40">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-lg">₹{finalTotal.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">
+                {items.length} item(s) • {shipping === 0 ? 'Free delivery' : `+₹${shipping}`}
+              </p>
+            </div>
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
+              <Link to="/checkout">
+                Checkout
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
