@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Grid2X2, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +7,8 @@ import { CategoryCircle } from '@/components/home/CategoryCircle';
 import { MeeshoProductCard } from '@/components/home/MeeshoProductCard';
 import { FilterBar } from '@/components/home/FilterBar';
 import { MobileBottomNav } from '@/components/home/MobileBottomNav';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ProductGridSkeleton } from '@/components/products/ProductCardSkeleton';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 
 interface Product {
   id: string;
@@ -37,11 +38,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('newest');
 
-  useEffect(() => {
-    fetchData();
-  }, [sortBy]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -84,14 +81,22 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sortBy]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSortChange = (sort: string) => {
     setSortBy(sort);
   };
 
+  const handleRefresh = async () => {
+    await fetchData();
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <PullToRefresh onRefresh={handleRefresh} className="min-h-screen bg-background pb-20 md:pb-0">
       {/* Header */}
       <HomeHeader />
 
@@ -112,18 +117,7 @@ export default function Home() {
       {/* Products Grid */}
       <div className="p-3">
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-card rounded-lg overflow-hidden border border-border/50">
-                <Skeleton className="aspect-[3/4] w-full" />
-                <div className="p-3 space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <ProductGridSkeleton count={8} />
         ) : products.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {products.map((product) => (
@@ -158,6 +152,6 @@ export default function Home() {
       <MobileBottomNav />
 
       {/* Customer Support Chat is rendered globally in App.tsx */}
-    </div>
+    </PullToRefresh>
   );
 }

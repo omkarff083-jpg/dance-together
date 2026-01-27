@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Package, ChevronRight, Truck, Bell, Search } from 'lucide-react';
 import { format, addDays } from 'date-fns';
@@ -10,6 +10,8 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OrderListSkeleton } from '@/components/orders/OrderCardSkeleton';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 
 interface Order {
   id: string;
@@ -134,7 +136,7 @@ export default function Orders() {
     }
   }, [user, navigate]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -157,6 +159,11 @@ export default function Orders() {
     } finally {
       setLoading(false);
     }
+  }, [user]);
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    await fetchOrders();
   };
 
   const handleGuestOrderLookup = () => {
@@ -226,11 +233,7 @@ export default function Orders() {
       <Layout>
         <div className="container py-8">
           <h1 className="font-display text-3xl font-bold mb-8">My Orders</h1>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
-            ))}
-          </div>
+          <OrderListSkeleton count={5} />
         </div>
       </Layout>
     );
@@ -253,7 +256,7 @@ export default function Orders() {
 
   return (
     <Layout>
-      <div className="container py-8">
+      <PullToRefresh onRefresh={handleRefresh} className="container py-8">
         <h1 className="font-display text-3xl font-bold mb-8">My Orders</h1>
 
         <div className="space-y-4">
@@ -337,7 +340,7 @@ export default function Orders() {
             );
           })}
         </div>
-      </div>
+      </PullToRefresh>
     </Layout>
   );
 }

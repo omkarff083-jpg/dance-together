@@ -1088,25 +1088,24 @@ export default function CheckoutPayment() {
           </div>
 
           {/* Order Summary - Fixed bottom on mobile */}
-          <div className="fixed bottom-14 left-0 right-0 z-40 bg-background border-t border-border p-3 md:p-0 md:relative md:bottom-auto md:border-t-0 lg:block">
-            <Card className="p-3 md:p-6 md:sticky md:top-24">
+          <div className="fixed bottom-14 left-0 right-0 z-40 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:relative md:bottom-auto md:border-t-0 md:shadow-none lg:block">
+            <Card className="border-0 md:border rounded-none md:rounded-lg p-0 md:p-6 md:sticky md:top-24">
               {/* Compact view on mobile */}
-              <div className="md:hidden">
+              <div className="md:hidden px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-lg font-bold">₹{finalTotal.toLocaleString()}</span>
                       {discountAmount > 0 && (
                         <span className="text-xs line-through text-muted-foreground">₹{subtotalWithShipping.toLocaleString()}</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {checkoutItems.length} item(s) • {shipping === 0 ? 'Free delivery' : `+₹${shipping} delivery`}
                     </p>
                   </div>
                   <Button
                     onClick={handlePayment}
-                    size="sm"
                     disabled={loading || !paymentMethod}
                     className="shrink-0"
                   >
