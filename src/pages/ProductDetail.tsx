@@ -431,10 +431,10 @@ export default function ProductDetail() {
 
   return (
     <Layout>
-      <div className="container py-8">
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+      <div className="container px-4 py-4 md:py-8 pb-36 md:pb-8">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-8 lg:gap-12">
           {/* Images */}
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div className="aspect-square overflow-hidden rounded-lg bg-secondary">
               <img
                 src={images[selectedImage]}
@@ -460,32 +460,32 @@ export default function ProductDetail() {
           </div>
 
           {/* Details */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {product.category && (
-              <p className="text-sm text-muted-foreground uppercase tracking-wider">
+              <p className="text-xs md:text-sm text-muted-foreground uppercase tracking-wider">
                 {product.category.name}
               </p>
             )}
 
-            <h1 className="font-display text-3xl font-bold">{product.name}</h1>
+            <h1 className="font-display text-xl md:text-3xl font-bold">{product.name}</h1>
 
             {/* Rating */}
-            <div className="flex items-center gap-3">
-              <StarRating rating={Math.round(avgRating)} readonly size="md" />
-              <span className="text-sm text-muted-foreground">
-                {avgRating.toFixed(1)} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
+            <div className="flex items-center gap-2 md:gap-3">
+              <StarRating rating={Math.round(avgRating)} readonly size="sm" />
+              <span className="text-xs md:text-sm text-muted-foreground">
+                {avgRating.toFixed(1)} ({reviews.length} reviews)
               </span>
             </div>
 
             {/* Price */}
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold">₹{displayPrice.toLocaleString()}</span>
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+              <span className="text-2xl md:text-3xl font-bold">₹{displayPrice.toLocaleString()}</span>
               {hasDiscount && (
                 <>
-                  <span className="text-xl text-muted-foreground line-through">
+                  <span className="text-base md:text-xl text-muted-foreground line-through">
                     ₹{product.price.toLocaleString()}
                   </span>
-                  <Badge className="bg-primary text-primary-foreground">-{discountPercent}%</Badge>
+                  <Badge className="bg-primary text-primary-foreground text-xs">-{discountPercent}%</Badge>
                 </>
               )}
             </div>
@@ -494,7 +494,7 @@ export default function ProductDetail() {
 
             {/* Sizes */}
             {product.sizes.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 <label className="text-sm font-medium">Size</label>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((size) => (
@@ -502,6 +502,7 @@ export default function ProductDetail() {
                       key={size}
                       variant={selectedSize === size ? 'default' : 'outline'}
                       size="sm"
+                      className="h-8 px-3 text-xs md:text-sm"
                       onClick={() => setSelectedSize(size)}
                     >
                       {size}
@@ -513,7 +514,7 @@ export default function ProductDetail() {
 
             {/* Colors */}
             {product.colors.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 <label className="text-sm font-medium">Color</label>
                 <div className="flex flex-wrap gap-2">
                   {product.colors.map((color) => (
@@ -521,6 +522,7 @@ export default function ProductDetail() {
                       key={color}
                       variant={selectedColor === color ? 'default' : 'outline'}
                       size="sm"
+                      className="h-8 px-3 text-xs md:text-sm"
                       onClick={() => setSelectedColor(color)}
                     >
                       {color}
@@ -531,32 +533,34 @@ export default function ProductDetail() {
             )}
 
             {/* Quantity */}
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               <label className="text-sm font-medium">Quantity</label>
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-8 w-8"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
-                <span className="w-12 text-center font-medium">{quantity}</span>
+                <span className="w-10 text-center font-medium">{quantity}</span>
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-8 w-8"
                   onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs md:text-sm text-muted-foreground">
                   {product.stock} available
                 </span>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col gap-3">
+            {/* Desktop Actions */}
+            <div className="hidden md:flex flex-col gap-3">
               <div className="flex gap-4">
                 <Button
                   size="lg"
@@ -583,7 +587,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Delivery Check */}
-            <Card className="p-4">
+            <Card className="p-3 md:p-4">
               <PincodeChecker
                 onPincodeVerified={(info) => {
                   // Just for display, no need to store
@@ -592,47 +596,76 @@ export default function ProductDetail() {
             </Card>
 
             {/* Features */}
-            <div className="grid grid-cols-3 gap-4 pt-4">
+            <div className="grid grid-cols-3 gap-2 md:gap-4 pt-2 md:pt-4">
               <div className="text-center">
-                <Truck className="h-6 w-6 mx-auto text-primary mb-2" />
-                <p className="text-xs text-muted-foreground">Free Shipping</p>
+                <Truck className="h-5 w-5 md:h-6 md:w-6 mx-auto text-primary mb-1 md:mb-2" />
+                <p className="text-[10px] md:text-xs text-muted-foreground">Free Shipping</p>
               </div>
               <div className="text-center">
-                <Shield className="h-6 w-6 mx-auto text-primary mb-2" />
-                <p className="text-xs text-muted-foreground">Secure Payment</p>
+                <Shield className="h-5 w-5 md:h-6 md:w-6 mx-auto text-primary mb-1 md:mb-2" />
+                <p className="text-[10px] md:text-xs text-muted-foreground">Secure Payment</p>
               </div>
               <div className="text-center">
-                <RefreshCw className="h-6 w-6 mx-auto text-primary mb-2" />
-                <p className="text-xs text-muted-foreground">Easy Returns</p>
+                <RefreshCw className="h-5 w-5 md:h-6 md:w-6 mx-auto text-primary mb-1 md:mb-2" />
+                <p className="text-[10px] md:text-xs text-muted-foreground">Easy Returns</p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Fixed Bottom Actions for Mobile */}
+        <div className="fixed bottom-14 left-0 right-0 bg-background border-t p-3 md:hidden z-40">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0"
+              onClick={handleAddToWishlist}
+            >
+              <Heart className="h-5 w-5" />
+            </Button>
+            <Button
+              className="flex-1 h-10"
+              onClick={handleAddToCart}
+              disabled={product.stock === 0}
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+            </Button>
+            <Button
+              className="flex-1 h-10 bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={handleBuyNow}
+              disabled={product.stock === 0}
+            >
+              Buy Now
+            </Button>
+          </div>
+        </div>
+
         {/* Tabs */}
-        <div className="mt-12">
+        <div className="mt-8 md:mt-12">
           <Tabs defaultValue="description">
-            <TabsList>
-              <TabsTrigger value="description">Description</TabsTrigger>
-              <TabsTrigger value="reviews">
+            <TabsList className="w-full md:w-auto">
+              <TabsTrigger value="description" className="text-xs md:text-sm">Description</TabsTrigger>
+              <TabsTrigger value="reviews" className="text-xs md:text-sm">
                 Reviews ({reviews.length})
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="description" className="mt-6">
-              <p className="text-muted-foreground whitespace-pre-wrap">
+            <TabsContent value="description" className="mt-4 md:mt-6">
+              <p className="text-sm md:text-base text-muted-foreground whitespace-pre-wrap">
                 {product.description || 'No description available.'}
               </p>
             </TabsContent>
             
-            <TabsContent value="reviews" className="mt-6">
-              <div className="grid lg:grid-cols-3 gap-8">
+            <TabsContent value="reviews" className="mt-4 md:mt-6">
+              <div className="grid lg:grid-cols-3 gap-4 md:gap-8">
                 {/* Reviews Summary */}
-                <Card className="p-6 h-fit">
-                  <div className="text-center mb-6">
-                    <div className="text-5xl font-bold">{avgRating.toFixed(1)}</div>
-                    <StarRating rating={Math.round(avgRating)} readonly size="lg" />
-                    <p className="text-sm text-muted-foreground mt-2">
+                <Card className="p-4 md:p-6 h-fit">
+                  <div className="text-center mb-4 md:mb-6">
+                    <div className="text-4xl md:text-5xl font-bold">{avgRating.toFixed(1)}</div>
+                    <StarRating rating={Math.round(avgRating)} readonly size="md" />
+                    <p className="text-xs md:text-sm text-muted-foreground mt-2">
                       Based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
                     </p>
                   </div>
@@ -646,25 +679,25 @@ export default function ProductDetail() {
                   {/* Write Review Button */}
                   {user ? (
                     <Button 
-                      className="w-full" 
+                      className="w-full text-sm" 
                       onClick={() => setShowReviewForm(!showReviewForm)}
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
-                      {userReview ? 'Edit Your Review' : 'Write a Review'}
+                      {userReview ? 'Edit Review' : 'Write Review'}
                     </Button>
                   ) : (
-                    <Button className="w-full" variant="outline" asChild>
+                    <Button className="w-full text-sm" variant="outline" asChild>
                       <a href="/auth">Login to Review</a>
                     </Button>
                   )}
                 </Card>
 
                 {/* Reviews List */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2 space-y-4 md:space-y-6">
                   {/* Review Form */}
                   {showReviewForm && (
-                    <Card className="p-6">
-                      <h3 className="font-semibold mb-4">
+                    <Card className="p-4 md:p-6">
+                      <h3 className="font-semibold text-sm md:text-base mb-4">
                         {userReview ? 'Edit Your Review' : 'Write a Review'}
                       </h3>
                       
@@ -683,27 +716,30 @@ export default function ProductDetail() {
                           <Textarea
                             value={reviewComment}
                             onChange={(e) => setReviewComment(e.target.value)}
-                            placeholder="Share your experience with this product..."
-                            rows={4}
+                            placeholder="Share your experience..."
+                            rows={3}
                           />
                         </div>
                         
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button 
+                            size="sm"
                             onClick={handleSubmitReview}
                             disabled={submittingReview || reviewRating === 0}
                           >
-                            {submittingReview ? 'Submitting...' : userReview ? 'Update Review' : 'Submit Review'}
+                            {submittingReview ? 'Submitting...' : userReview ? 'Update' : 'Submit'}
                           </Button>
                           <Button 
-                            variant="outline" 
+                            variant="outline"
+                            size="sm"
                             onClick={() => setShowReviewForm(false)}
                           >
                             Cancel
                           </Button>
                           {userReview && (
                             <Button 
-                              variant="destructive" 
+                              variant="destructive"
+                              size="sm"
                               onClick={handleDeleteReview}
                             >
                               Delete
@@ -716,32 +752,32 @@ export default function ProductDetail() {
 
                   {/* Reviews */}
                   {reviews.length === 0 ? (
-                    <Card className="p-8 text-center">
-                      <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">No Reviews Yet</h3>
-                      <p className="text-muted-foreground">
-                        Be the first to review this product!
+                    <Card className="p-6 md:p-8 text-center">
+                      <MessageSquare className="h-10 w-10 md:h-12 md:w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-semibold text-sm md:text-base mb-2">No Reviews Yet</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">
+                        Be the first to review!
                       </p>
                     </Card>
                   ) : (
                     reviews.map((review) => (
-                      <Card key={review.id} className="p-6">
-                        <div className="flex items-start gap-4">
-                          <Avatar className="h-10 w-10">
+                      <Card key={review.id} className="p-4 md:p-6">
+                        <div className="flex items-start gap-3 md:gap-4">
+                          <Avatar className="h-8 w-8 md:h-10 md:w-10">
                             <AvatarFallback>
-                              {review.user_name?.[0]?.toUpperCase() || <User className="h-5 w-5" />}
+                              {review.user_name?.[0]?.toUpperCase() || <User className="h-4 w-4" />}
                             </AvatarFallback>
                           </Avatar>
                           
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                              <span className="font-medium text-sm">
                                 {review.user_name || 'Anonymous'}
                                 {review.user_id === user?.id && (
-                                  <Badge variant="secondary" className="ml-2">You</Badge>
+                                  <Badge variant="secondary" className="ml-2 text-xs">You</Badge>
                                 )}
                               </span>
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-xs text-muted-foreground">
                                 {format(new Date(review.created_at), 'dd MMM yyyy')}
                               </span>
                             </div>
@@ -749,7 +785,7 @@ export default function ProductDetail() {
                             <StarRating rating={review.rating} readonly size="sm" />
                             
                             {review.comment && (
-                              <p className="mt-3 text-muted-foreground">{review.comment}</p>
+                              <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>
                             )}
                           </div>
                         </div>

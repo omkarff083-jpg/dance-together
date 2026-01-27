@@ -598,11 +598,11 @@ export default function CheckoutPayment() {
 
             if (verifyError) throw verifyError;
 
-            await createOrder(response.razorpay_payment_id, 'confirmed');
+            const order = await createOrder(response.razorpay_payment_id, 'confirmed');
             await clearCheckoutItems();
             
             toast.success('Payment successful! Order confirmed.');
-            navigate('/orders');
+            navigate(`/order-confirmation?orderId=${order.id}`);
           } catch (error) {
             console.error('Payment verification error:', error);
             toast.error('Payment verification failed. Order not placed.');
@@ -680,9 +680,9 @@ export default function CheckoutPayment() {
     // Clear checkout items
     await clearCheckoutItems();
     
-    // Show success message and redirect directly
+    // Show success message and redirect to confirmation page
     toast.success('Order placed successfully! Payment will be verified shortly.');
-    navigate('/orders');
+    navigate(`/order-confirmation?orderId=${pendingOrderId}`);
   };
 
   const handleUpiDialogClose = async (open: boolean) => {
@@ -760,10 +760,10 @@ export default function CheckoutPayment() {
     } else {
       setLoading(true);
       try {
-        await createOrder(undefined, 'confirmed');
+        const order = await createOrder(undefined, 'confirmed');
         await clearCheckoutItems();
         toast.success('Order placed successfully! Pay on delivery.');
-        navigate('/orders');
+        navigate(`/order-confirmation?orderId=${order.id}`);
       } catch (error) {
         console.error('Order error:', error);
         toast.error('Failed to place order');

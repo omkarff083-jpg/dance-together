@@ -22,6 +22,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import NotFound from "./pages/NotFound";
 import AdminOwner from "./pages/AdminOwner";
+import OrderConfirmation from "./pages/OrderConfirmation";
 
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:orderId" element={<OrderTracking />} />
               <Route path="/help" element={<HelpCenter />} />
+              <Route path="/order-confirmation" element={<OrderConfirmation />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-conditions" element={<TermsConditions />} />
               
