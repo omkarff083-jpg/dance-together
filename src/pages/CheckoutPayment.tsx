@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, ArrowLeft, Wallet, Building2, Ticket, X, MapPin } from 'lucide-react';
+import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, ArrowLeft, Wallet, Building2, Ticket, X, MapPin, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -805,34 +805,64 @@ export default function CheckoutPayment() {
   return (
     <Layout>
       <div className="container px-3 md:px-4 py-4 md:py-8 pb-40 md:pb-8">
-        {/* Progress Steps - Compact on mobile */}
-        <div className="flex items-center justify-center gap-2 md:gap-4 mb-4 md:mb-8">
-          <div className="flex items-center gap-1 md:gap-2">
-            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-xs md:text-sm font-semibold">
-              <Check className="h-3 w-3 md:h-4 md:w-4" />
+        {/* Header - Flipkart Style */}
+        <div className="md:hidden flex items-center justify-between mb-4 pb-3 border-b">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8 -ml-2"
+              onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <p className="text-xs text-muted-foreground">Step 3 of 3</p>
+              <h1 className="text-lg font-semibold">Payments</h1>
             </div>
-            <span className="text-xs md:text-sm text-muted-foreground">Address</span>
           </div>
-          <div className="w-6 md:w-12 h-0.5 bg-primary" />
-          <div className="flex items-center gap-1 md:gap-2">
-            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs md:text-sm font-semibold">
-              2
-            </div>
-            <span className="text-xs md:text-sm font-medium">Payment</span>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Shield className="h-3.5 w-3.5" />
+            100% Secure
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-8">
+        {/* Total Amount Header - Flipkart style (mobile) */}
+        <div className="md:hidden bg-secondary/50 rounded-xl p-3 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Total Amount</span>
+            <span className="text-lg font-bold">₹{finalTotal.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* Desktop Progress Steps */}
+        <div className="hidden md:flex items-center justify-center gap-4 mb-8">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
+              <Check className="h-4 w-4" />
+            </div>
+            <span className="text-sm text-muted-foreground">Address</span>
+          </div>
+          <div className="w-12 h-0.5 bg-primary" />
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+              2
+            </div>
+            <span className="text-sm font-medium">Payment</span>
+          </div>
+        </div>
+
+        <div className="hidden md:flex items-center gap-4 mb-8">
           <Button 
             variant="ghost" 
             size="icon"
-            className="h-8 w-8 md:h-10 md:w-10"
+            className="h-10 w-10"
             onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
           >
-            <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="font-display text-xl md:text-3xl font-bold flex items-center gap-2 md:gap-3">
-            <CreditCard className="h-5 w-5 md:h-8 md:w-8" />
+          <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+            <CreditCard className="h-8 w-8" />
             Payment
           </h1>
         </div>
@@ -912,22 +942,24 @@ export default function CheckoutPayment() {
               )}
             </Card>
 
-            {/* Payment Method */}
-            <Card className="p-3 md:p-6">
-              <h2 className="font-semibold text-base md:text-lg mb-3 md:mb-4">Select Payment Method</h2>
+            {/* Payment Method - Flipkart Style Accordion */}
+            <Card className="p-0 md:p-6 overflow-hidden">
+              <h2 className="font-semibold text-base md:text-lg p-3 md:p-0 md:mb-4 border-b md:border-b-0">Payment Options</h2>
               
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-2 md:space-y-3">
+              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="divide-y md:space-y-3 md:divide-y-0">
                 {isRazorpayAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'razorpay' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="razorpay" id="razorpay" />
                     <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <CreditCard className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.razorpay_display_name || 'Pay Online'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.razorpay_display_description || 'Cards, UPI, Net Banking'}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <CreditCard className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{paymentSettings?.razorpay_display_name || 'UPI'}</p>
+                            <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_display_description || 'Pay by any UPI app'}</p>
+                          </div>
                         </div>
                       </div>
                     </Label>
@@ -935,16 +967,16 @@ export default function CheckoutPayment() {
                 )}
 
                 {isRazorpayUpiAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'razorpay_upi' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="razorpay_upi" id="razorpay_upi" />
                     <Label htmlFor="razorpay_upi" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-                          <span className="text-white font-bold text-[10px] md:text-xs">RZP</span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">RZP</span>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.razorpay_upi_display_name || 'Razorpay UPI'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.razorpay_upi_display_description || 'Pay via QR & Enter TR ID'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.razorpay_upi_display_name || 'Credit / Debit / ATM Card'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_upi_display_description || 'Add and secure cards as per RBI guidelines'}</p>
                         </div>
                       </div>
                     </Label>
@@ -952,16 +984,16 @@ export default function CheckoutPayment() {
                 )}
 
                 {isPaytmAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'paytm' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="paytm" id="paytm" />
                     <Label htmlFor="paytm" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <Wallet className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <Wallet className="h-4 w-4 text-blue-600" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.paytm_display_name || 'Paytm'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.paytm_display_description || 'UPI, Wallet, Net Banking'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.paytm_display_name || 'Paytm'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.paytm_display_description || 'UPI, Wallet, Net Banking'}</p>
                         </div>
                       </div>
                     </Label>
@@ -969,16 +1001,16 @@ export default function CheckoutPayment() {
                 )}
 
                 {isCashfreeAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cashfree' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="cashfree" id="cashfree" />
                     <Label htmlFor="cashfree" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                          <CreditCard className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+                          <CreditCard className="h-4 w-4 text-purple-600" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.cashfree_display_name || 'Cashfree'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.cashfree_display_description || 'Cards, UPI, Net Banking'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.cashfree_display_name || 'EMI'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.cashfree_display_description || 'Credit Card EMI'}</p>
                         </div>
                       </div>
                     </Label>
@@ -986,16 +1018,16 @@ export default function CheckoutPayment() {
                 )}
 
                 {isPhonePeAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'phonepe' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="phonepe" id="phonepe" />
                     <Label htmlFor="phonepe" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                          <Smartphone className="h-4 w-4 md:h-5 md:w-5 text-indigo-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+                          <Smartphone className="h-4 w-4 text-indigo-600" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.phonepe_display_name || 'PhonePe'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.phonepe_display_description || 'UPI & Wallet'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.phonepe_display_name || 'PhonePe'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.phonepe_display_description || 'UPI & Wallet'}</p>
                         </div>
                       </div>
                     </Label>
@@ -1003,16 +1035,16 @@ export default function CheckoutPayment() {
                 )}
 
                 {isBharatPayAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'bharatpay' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="bharatpay" id="bharatpay" />
                     <Label htmlFor="bharatpay" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                          <Building2 className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
+                          <Building2 className="h-4 w-4 text-orange-600" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.bharatpay_display_name || 'BharatPay'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.bharatpay_display_description || 'UPI & Bank'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.bharatpay_display_name || 'BharatPay'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.bharatpay_display_description || 'UPI & Bank'}</p>
                         </div>
                       </div>
                     </Label>
@@ -1020,16 +1052,16 @@ export default function CheckoutPayment() {
                 )}
 
                 {isPayYouAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'payyou' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="payyou" id="payyou" />
                     <Label htmlFor="payyou" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                          <Wallet className="h-4 w-4 md:h-5 md:w-5 text-teal-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center">
+                          <Wallet className="h-4 w-4 text-teal-600" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.payyou_display_name || 'PayYou Biz'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.payyou_display_description || 'Business payment'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.payyou_display_name || 'PayYou Biz'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.payyou_display_description || 'Business payment'}</p>
                         </div>
                       </div>
                     </Label>
@@ -1037,16 +1069,16 @@ export default function CheckoutPayment() {
                 )}
                 
                 {isUpiAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'upi' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="upi" id="upi" />
                     <Label htmlFor="upi" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                          <QrCode className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
+                          <QrCode className="h-4 w-4 text-green-600" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.upi_display_name || 'Pay via UPI'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.upi_display_description || 'Scan QR or UPI ID'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.upi_display_name || 'Pay via UPI'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.upi_display_description || 'Scan QR or UPI ID'}</p>
                         </div>
                       </div>
                     </Label>
@@ -1054,16 +1086,16 @@ export default function CheckoutPayment() {
                 )}
                 
                 {isCodAvailable && (
-                  <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-4 border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors">
+                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
                     <RadioGroupItem value="cod" id="cod" />
                     <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                          <Banknote className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
+                          <Banknote className="h-4 w-4 text-amber-600" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm md:text-base font-medium truncate">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">{paymentSettings?.cod_display_description || 'Pay on delivery'}</p>
+                        <div>
+                          <p className="text-sm font-medium">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</p>
+                          <p className="text-xs text-muted-foreground">{paymentSettings?.cod_display_description || 'Pay on delivery'}</p>
                         </div>
                       </div>
                     </Label>
