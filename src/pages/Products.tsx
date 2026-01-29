@@ -10,6 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Layout } from '@/components/layout/Layout';
 import { ProductGrid } from '@/components/products/ProductGrid';
+import { CompareBar } from '@/components/compare/CompareBar';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Product {
@@ -348,6 +349,9 @@ export default function Products() {
 
         {/* Products Grid */}
         <ProductGrid products={products} loading={loading} />
+        
+        {/* Compare Bar */}
+        <CompareBar />
       </div>
     </Layout>
   );

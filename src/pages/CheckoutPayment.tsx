@@ -805,53 +805,22 @@ export default function CheckoutPayment() {
   return (
     <Layout>
       <div className="container px-3 md:px-4 py-4 md:py-8 pb-40 md:pb-8">
-        {/* Header - Flipkart Style */}
-        <div className="md:hidden flex items-center justify-between mb-4 pb-3 border-b">
-          <div className="flex items-center gap-3">
+        {/* Mobile Header */}
+        <div className="md:hidden mb-4">
+          <div className="flex items-center gap-3 mb-2">
             <Button 
               variant="ghost" 
               size="icon"
-              className="h-8 w-8 -ml-2"
+              className="h-8 w-8"
               onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <p className="text-xs text-muted-foreground">Step 3 of 3</p>
-              <h1 className="text-lg font-semibold">Payments</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Shield className="h-3.5 w-3.5" />
-            100% Secure
+            <h1 className="text-lg font-semibold">Payment</h1>
           </div>
         </div>
 
-        {/* Total Amount Header - Flipkart style (mobile) */}
-        <div className="md:hidden bg-secondary/50 rounded-xl p-3 mb-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Total Amount</span>
-            <span className="text-lg font-bold">₹{finalTotal.toLocaleString()}</span>
-          </div>
-        </div>
-
-        {/* Desktop Progress Steps */}
-        <div className="hidden md:flex items-center justify-center gap-4 mb-8">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold">
-              <Check className="h-4 w-4" />
-            </div>
-            <span className="text-sm text-muted-foreground">Address</span>
-          </div>
-          <div className="w-12 h-0.5 bg-primary" />
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
-              2
-            </div>
-            <span className="text-sm font-medium">Payment</span>
-          </div>
-        </div>
-
+        {/* Desktop Header */}
         <div className="hidden md:flex items-center gap-4 mb-8">
           <Button 
             variant="ghost" 
