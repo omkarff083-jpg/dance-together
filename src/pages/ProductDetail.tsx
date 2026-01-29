@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, Minus, Plus, ShoppingBag, Star, Truck, Shield, RefreshCw, MessageSquare, User, ThumbsUp, ChevronLeft, Share2 } from 'lucide-react';
+import { Heart, Minus, Plus, ShoppingBag, Star, Truck, Shield, RefreshCw, MessageSquare, User, GitCompare, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +13,12 @@ import { Card } from '@/components/ui/card';
 import { Layout } from '@/components/layout/Layout';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompare } from '@/contexts/CompareContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PincodeChecker } from '@/components/checkout/PincodeChecker';
+import { SwipeableImageGallery } from '@/components/products/SwipeableImageGallery';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 interface Product {
   id: string;
@@ -114,6 +117,8 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToCart } = useCart();
+  const { addToCompare, isInCompare } = useCompare();
+  const { addToRecentlyViewed } = useRecentlyViewed();
   
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -128,7 +133,6 @@ export default function ProductDetail() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
-  const [hasPurchased, setHasPurchased] = useState(false);
   const [userReview, setUserReview] = useState<Review | null>(null);
 
   useEffect(() => {
@@ -139,10 +143,23 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (user && product) {
-      checkPurchaseHistory();
       checkUserReview();
     }
   }, [user, product]);
+
+  // Track recently viewed
+  useEffect(() => {
+    if (product) {
+      addToRecentlyViewed({
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        price: product.price,
+        sale_price: product.sale_price,
+        images: product.images,
+      });
+    }
+  }, [product, addToRecentlyViewed]);
 
   const fetchProduct = async () => {
     try {
@@ -181,7 +198,6 @@ export default function ProductDetail() {
       .order('created_at', { ascending: false });
 
     if (reviewsData) {
-      // Fetch profile names for each review
       const userIds = [...new Set(reviewsData.map(r => r.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
@@ -195,21 +211,6 @@ export default function ProductDetail() {
         user_name: profileMap.get(r.user_id) || null,
       })));
     }
-  };
-
-  const checkPurchaseHistory = async () => {
-    if (!user || !product) return;
-    
-    // Check if user has a delivered order containing this product
-    const { data } = await supabase
-      .from('order_items')
-      .select('id, order:orders!inner(user_id, status)')
-      .eq('product_id', product.id)
-      .eq('order.user_id', user.id)
-      .eq('order.status', 'delivered')
-      .limit(1);
-
-    setHasPurchased((data && data.length > 0) || false);
   };
 
   const checkUserReview = async () => {
@@ -244,7 +245,6 @@ export default function ProductDetail() {
 
     try {
       if (userReview) {
-        // Update existing review
         const { error } = await supabase
           .from('reviews')
           .update({
@@ -256,7 +256,6 @@ export default function ProductDetail() {
         if (error) throw error;
         toast.success('Review updated successfully!');
       } else {
-        // Create new review
         const { error } = await supabase
           .from('reviews')
           .insert({
@@ -270,7 +269,6 @@ export default function ProductDetail() {
         toast.success('Review submitted successfully!');
       }
 
-      // Refresh reviews
       await fetchReviews(product.id);
       await checkUserReview();
       setShowReviewForm(false);
@@ -331,13 +329,6 @@ export default function ProductDetail() {
       return;
     }
 
-    // Set buy now item and navigate to checkout
-    const { setBuyNowItem } = await import('@/contexts/CartContext').then(m => {
-      // We need to access the context properly
-      return { setBuyNowItem: null };
-    });
-    
-    // Use the cart context's setBuyNowItem
     const buyNowData = {
       product_id: product.id,
       quantity,
@@ -353,7 +344,6 @@ export default function ProductDetail() {
       },
     };
     
-    // Store in sessionStorage for checkout to pick up
     sessionStorage.setItem('buyNowItem', JSON.stringify(buyNowData));
     navigate('/checkout?mode=buynow');
   };
@@ -383,6 +373,23 @@ export default function ProductDetail() {
       console.error('Error adding to wishlist:', error);
       toast.error('Failed to add to wishlist');
     }
+  };
+
+  const handleAddToCompare = () => {
+    if (!product) return;
+    addToCompare({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      sale_price: product.sale_price,
+      images: product.images,
+      description: product.description,
+      category: product.category,
+      sizes: product.sizes,
+      colors: product.colors,
+      stock: product.stock,
+    });
   };
 
   const handleShare = async () => {
@@ -438,128 +445,65 @@ export default function ProductDetail() {
     ? product.images
     : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'];
 
-  // Allow any logged-in user to review (not just purchasers)
   const canReview = !!user;
 
   return (
     <Layout>
-      {/* Mobile-only content - Flipkart Style */}
-      <div className="md:hidden">
-        {/* Product Image Section with fixed structure */}
-        <div className="relative bg-secondary">
-          {/* Main Image */}
-          <div className="aspect-square overflow-hidden">
-            <img
-              src={images[selectedImage]}
-              alt={product.name}
-              className="w-full h-full object-contain bg-white"
-            />
-          </div>
-          
-          {/* Rating Badge on Image - Flipkart style */}
-          {reviews.length > 0 && (
-            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-2.5 py-1.5 rounded-md shadow-sm flex items-center gap-1.5">
-              <span className="text-sm font-semibold">{avgRating.toFixed(1)}</span>
-              <Star className="h-3.5 w-3.5 fill-green-500 text-green-500" />
-              <span className="text-xs text-muted-foreground">| {reviews.length >= 1000 ? `${(reviews.length / 1000).toFixed(1)}K+` : reviews.length}</span>
-            </div>
-          )}
+      {/* Mobile Layout */}
+      <div className="md:hidden pb-24">
+        {/* Swipeable Image Gallery */}
+        <SwipeableImageGallery 
+          images={images} 
+          productName={product.name}
+          onImageChange={setSelectedImage}
+        />
 
-          {/* Action buttons on image */}
-          <div className="absolute top-4 right-4 flex gap-2">
-            <button 
-              onClick={handleAddToWishlist}
-              className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center"
-            >
-              <Heart className="h-5 w-5 text-muted-foreground" />
-            </button>
-            <button 
-              onClick={handleShare}
-              className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center"
-            >
-              <Share2 className="h-5 w-5 text-muted-foreground" />
-            </button>
-          </div>
-        </div>
-
-        {/* Dot indicators for images */}
-        {images.length > 1 && (
-          <div className="flex justify-center items-center gap-1.5 py-3 bg-white">
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedImage(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  selectedImage === index ? 'bg-primary w-4' : 'bg-muted-foreground/30'
-                }`}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Color/Variant Selection Section - Flipkart style */}
-        {product.colors.length > 0 && (
-          <div className="bg-white px-4 py-3 border-b">
-            <p className="text-sm mb-2">
-              <span className="font-medium">Selected Color: </span>
-              <span className="text-muted-foreground">{selectedColor}</span>
-            </p>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-              {product.colors.map((color, idx) => (
-                <button
-                  key={color}
-                  onClick={() => {
-                    setSelectedColor(color);
-                    if (images.length > idx) setSelectedImage(idx);
-                  }}
-                  className={`flex-shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden transition-all ${
-                    selectedColor === color ? 'border-primary ring-1 ring-primary' : 'border-border'
-                  }`}
-                >
-                  <img
-                    src={images[idx] || images[0]}
-                    alt={color}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Product Info Section */}
-        <div className="bg-white px-4 py-3 space-y-2">
+        {/* Product Info */}
+        <div className="px-4 py-3 space-y-3">
           {product.category && (
             <p className="text-xs text-primary font-medium">{product.category.name}</p>
           )}
           
-          <h1 className="text-base font-medium leading-snug line-clamp-2">{product.name}</h1>
+          <h1 className="text-lg font-semibold leading-tight">{product.name}</h1>
           
-          {/* Price Section - Flipkart style */}
-          <div className="flex items-baseline gap-2 pt-1">
-            {hasDiscount && (
-              <span className="text-green-600 font-semibold text-sm">↓{discountPercent}%</span>
-            )}
-            {hasDiscount && (
-              <span className="text-muted-foreground line-through text-sm">
-                ₹{product.price.toLocaleString()}
+          {/* Rating */}
+          {reviews.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-sm font-medium">
+                {avgRating.toFixed(1)} <Star className="h-3 w-3 fill-current" />
+              </div>
+              <span className="text-sm text-muted-foreground">
+                ({reviews.length} reviews)
               </span>
+            </div>
+          )}
+
+          {/* Price */}
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-bold">₹{displayPrice.toLocaleString()}</span>
+            {hasDiscount && (
+              <>
+                <span className="text-lg text-muted-foreground line-through">
+                  ₹{product.price.toLocaleString()}
+                </span>
+                <Badge className="bg-green-600 text-white">{discountPercent}% OFF</Badge>
+              </>
             )}
-            <span className="text-xl font-bold">₹{displayPrice.toLocaleString()}</span>
           </div>
         </div>
 
+        <Separator />
+
         {/* Sizes */}
         {product.sizes.length > 0 && (
-          <div className="bg-white px-4 py-3 border-t space-y-2">
-            <p className="text-sm font-medium">Select Size</p>
+          <div className="px-4 py-3">
+            <p className="text-sm font-medium mb-2">Select Size</p>
             <div className="flex flex-wrap gap-2">
               {product.sizes.map((size) => (
                 <Button
                   key={size}
                   variant={selectedSize === size ? 'default' : 'outline'}
                   size="sm"
-                  className="h-9 px-4"
                   onClick={() => setSelectedSize(size)}
                 >
                   {size}
@@ -569,76 +513,115 @@ export default function ProductDetail() {
           </div>
         )}
 
-        {/* Quantity */}
-        <div className="bg-white px-4 py-3 border-t">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Quantity</span>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="w-8 text-center font-medium">{quantity}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                ({product.stock} left)
-              </span>
+        {/* Colors */}
+        {product.colors.length > 0 && (
+          <div className="px-4 py-3">
+            <p className="text-sm font-medium mb-2">Select Color</p>
+            <div className="flex flex-wrap gap-2">
+              {product.colors.map((color) => (
+                <Button
+                  key={color}
+                  variant={selectedColor === color ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedColor(color)}
+                >
+                  {color}
+                </Button>
+              ))}
             </div>
+          </div>
+        )}
+
+        {/* Quantity */}
+        <div className="px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-medium">Quantity</span>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="w-8 text-center font-medium">{quantity}</span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
+        <Separator />
+
         {/* Delivery Check */}
-        <div className="bg-white px-4 py-3 border-t">
-          <PincodeChecker
-            onPincodeVerified={(info) => {}}
-          />
+        <div className="px-4 py-3">
+          <PincodeChecker onPincodeVerified={() => {}} />
+        </div>
+
+        <Separator />
+
+        {/* Action Buttons */}
+        <div className="px-4 py-3 flex gap-3">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handleAddToWishlist}
+          >
+            <Heart className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handleAddToCompare}
+            className={isInCompare(product.id) ? 'bg-primary/10' : ''}
+          >
+            <GitCompare className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handleShare}
+          >
+            <Share2 className="h-5 w-5" />
+          </Button>
         </div>
 
         {/* Features */}
-        <div className="bg-white px-4 py-4 border-t grid grid-cols-3 gap-2">
+        <div className="px-4 py-4 grid grid-cols-3 gap-2">
           <div className="text-center">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1">
-              <Truck className="h-5 w-5 text-primary" />
-            </div>
-            <p className="text-[10px] text-muted-foreground">Free Shipping</p>
+            <Truck className="h-5 w-5 mx-auto text-primary mb-1" />
+            <p className="text-xs text-muted-foreground">Free Shipping</p>
           </div>
           <div className="text-center">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <p className="text-[10px] text-muted-foreground">Secure Payment</p>
+            <Shield className="h-5 w-5 mx-auto text-primary mb-1" />
+            <p className="text-xs text-muted-foreground">Secure Payment</p>
           </div>
           <div className="text-center">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1">
-              <RefreshCw className="h-5 w-5 text-primary" />
-            </div>
-            <p className="text-[10px] text-muted-foreground">Easy Returns</p>
+            <RefreshCw className="h-5 w-5 mx-auto text-primary mb-1" />
+            <p className="text-xs text-muted-foreground">Easy Returns</p>
           </div>
         </div>
 
+        <Separator />
+
         {/* Description */}
-        <div className="bg-white px-4 py-3 border-t">
-          <h3 className="text-sm font-semibold mb-2">Product Details</h3>
+        <div className="px-4 py-4">
+          <h3 className="font-semibold mb-2">Product Details</h3>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
             {product.description || 'No description available.'}
           </p>
         </div>
 
         {/* Reviews Section */}
-        <div className="bg-white px-4 py-4 border-t mb-32">
+        <Separator />
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold">Ratings & Reviews</h3>
+            <h3 className="font-semibold">Ratings & Reviews</h3>
             {canReview && !userReview && (
               <Button size="sm" variant="outline" onClick={() => setShowReviewForm(true)}>
                 Rate Product
@@ -647,16 +630,18 @@ export default function ProductDetail() {
           </div>
 
           {/* Average Rating */}
-          <div className="flex items-center gap-4 mb-4 p-3 bg-secondary/50 rounded-lg">
-            <div className="text-center">
-              <div className="text-3xl font-bold">{avgRating.toFixed(1)}</div>
-              <StarRating rating={Math.round(avgRating)} readonly size="sm" />
-              <p className="text-xs text-muted-foreground mt-1">{reviews.length} reviews</p>
+          {reviews.length > 0 && (
+            <div className="flex items-center gap-4 mb-4 p-3 bg-secondary/50 rounded-lg">
+              <div className="text-center">
+                <div className="text-3xl font-bold">{avgRating.toFixed(1)}</div>
+                <StarRating rating={Math.round(avgRating)} readonly size="sm" />
+                <p className="text-xs text-muted-foreground mt-1">{reviews.length} reviews</p>
+              </div>
+              <div className="flex-1">
+                <RatingDistribution reviews={reviews} />
+              </div>
             </div>
-            <div className="flex-1">
-              <RatingDistribution reviews={reviews} />
-            </div>
-          </div>
+          )}
 
           {/* Review Form */}
           {showReviewForm && (
@@ -707,7 +692,7 @@ export default function ProductDetail() {
           )}
 
           {/* Reviews List */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {reviews.filter(r => r.id !== userReview?.id).slice(0, 5).map((review) => (
               <div key={review.id} className="border-b pb-3 last:border-b-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -729,20 +714,20 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* Fixed Bottom Actions - Truly Fixed */}
-        <div className="fixed bottom-14 left-0 right-0 bg-white border-t shadow-lg z-40" style={{ position: 'fixed' }}>
-          <div className="flex">
+        {/* Fixed Bottom Actions */}
+        <div className="fixed bottom-14 left-0 right-0 bg-background border-t shadow-lg z-40">
+          <div className="flex gap-3 p-3">
             <Button
-              variant="ghost"
-              className="flex-1 h-14 rounded-none border-r font-semibold text-primary"
+              variant="outline"
+              className="flex-1"
               onClick={handleAddToCart}
               disabled={product.stock === 0}
             >
-              <ShoppingBag className="h-5 w-5 mr-2" />
-              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Add to Cart
             </Button>
             <Button
-              className="flex-1 h-14 rounded-none bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
+              className="flex-1"
               onClick={handleBuyNow}
               disabled={product.stock === 0}
             >
@@ -753,11 +738,10 @@ export default function ProductDetail() {
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:block container px-4 py-8 pb-8">
+      <div className="hidden md:block container px-4 py-8">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           {/* Images */}
           <div className="space-y-4">
-            {/* Main Image */}
             <div className="aspect-square overflow-hidden rounded-lg bg-secondary">
               <img
                 src={images[selectedImage]}
@@ -766,7 +750,6 @@ export default function ProductDetail() {
               />
             </div>
             
-            {/* Thumbnail grid */}
             {images.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {images.map((image, index) => (
@@ -895,6 +878,14 @@ export default function ProductDetail() {
                 <Button size="lg" variant="outline" onClick={handleAddToWishlist}>
                   <Heart className="h-5 w-5" />
                 </Button>
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  onClick={handleAddToCompare}
+                  className={isInCompare(product.id) ? 'bg-primary/10' : ''}
+                >
+                  <GitCompare className="h-5 w-5" />
+                </Button>
               </div>
               <Button
                 size="lg"
@@ -909,9 +900,7 @@ export default function ProductDetail() {
 
             {/* Delivery Check */}
             <Card className="p-4">
-              <PincodeChecker
-                onPincodeVerified={(info) => {}}
-              />
+              <PincodeChecker onPincodeVerified={() => {}} />
             </Card>
 
             {/* Features */}
@@ -948,7 +937,6 @@ export default function ProductDetail() {
             
             <TabsContent value="reviews" className="mt-6">
               <div className="grid lg:grid-cols-3 gap-8">
-                {/* Reviews Summary */}
                 <Card className="p-6 h-fit">
                   <div className="text-center mb-6">
                     <div className="text-5xl font-bold">{avgRating.toFixed(1)}</div>
@@ -964,7 +952,6 @@ export default function ProductDetail() {
                   
                   <Separator className="my-4" />
                   
-                  {/* Write Review Button */}
                   {user ? (
                     <div>
                       {userReview ? (
@@ -1025,7 +1012,6 @@ export default function ProductDetail() {
                   )}
                 </Card>
 
-                {/* Reviews List */}
                 <div className="lg:col-span-2 space-y-4">
                   {reviews.length === 0 ? (
                     <Card className="p-8 text-center">

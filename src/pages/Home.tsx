@@ -9,6 +9,9 @@ import { FilterBar } from '@/components/home/FilterBar';
 import { MobileBottomNav } from '@/components/home/MobileBottomNav';
 import { ProductGridSkeleton } from '@/components/products/ProductCardSkeleton';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { RecentlyViewedSection } from '@/components/home/RecentlyViewedSection';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import { CompareBar } from '@/components/compare/CompareBar';
 
 interface Product {
   id: string;
@@ -37,6 +40,7 @@ export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('newest');
+  const { recentlyViewed, clearRecentlyViewed } = useRecentlyViewed();
 
   const fetchData = useCallback(async () => {
     try {
@@ -111,6 +115,12 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Recently Viewed Section */}
+      <RecentlyViewedSection 
+        products={recentlyViewed} 
+        onClear={clearRecentlyViewed} 
+      />
+
       {/* Filter Bar */}
       <FilterBar onSortChange={handleSortChange} />
 
@@ -148,10 +158,11 @@ export default function Home() {
         </div>
       )}
 
+      {/* Compare Bar */}
+      <CompareBar />
+
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
-
-      {/* Customer Support Chat is rendered globally in App.tsx */}
     </PullToRefresh>
   );
 }

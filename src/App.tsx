@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { CompareProvider } from "@/contexts/CompareContext";
 import { CustomerSupportChat } from "@/components/support/CustomerSupportChat";
 
 import Home from "./pages/Home";
@@ -23,6 +24,7 @@ import TermsConditions from "./pages/TermsConditions";
 import NotFound from "./pages/NotFound";
 import AdminOwner from "./pages/AdminOwner";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import Compare from "./pages/Compare";
 
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
@@ -45,43 +47,46 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/auth" element={<Navigate to="/" replace />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/product/:slug" element={<ProductDetail />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/wishlist" element={<Wishlist />} />
-              <Route path="/checkout" element={<CheckoutAddress />} />
-              <Route path="/checkout/payment" element={<CheckoutPayment />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/orders/:orderId" element={<OrderTracking />} />
-              <Route path="/help" element={<HelpCenter />} />
-              <Route path="/order-confirmation" element={<OrderConfirmation />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-conditions" element={<TermsConditions />} />
-              
-              {/* Hidden Admin Login */}
-              <Route path="/adminowner" element={<AdminOwner />} />
-              
-              {/* Admin Routes */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/products" element={<AdminProducts />} />
-              <Route path="/admin/categories" element={<AdminCategories />} />
-              <Route path="/admin/orders" element={<AdminOrders />} />
-              <Route path="/admin/pincodes" element={<AdminPincodes />} />
-              <Route path="/admin/shipping" element={<AdminShipping />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
-              <Route path="/admin/support" element={<AdminSupport />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/coupons" element={<AdminCoupons />} />
-              <Route path="/admin/utr" element={<AdminUtrManagement />} />
-              
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <CustomerSupportChat />
+            <CompareProvider>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/auth" element={<Navigate to="/" replace />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/product/:slug" element={<ProductDetail />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/wishlist" element={<Wishlist />} />
+                <Route path="/checkout" element={<CheckoutAddress />} />
+                <Route path="/checkout/payment" element={<CheckoutPayment />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/orders/:orderId" element={<OrderTracking />} />
+                <Route path="/help" element={<HelpCenter />} />
+                <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-conditions" element={<TermsConditions />} />
+                <Route path="/compare" element={<Compare />} />
+                
+                {/* Hidden Admin Login */}
+                <Route path="/adminowner" element={<AdminOwner />} />
+                
+                {/* Admin Routes */}
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/products" element={<AdminProducts />} />
+                <Route path="/admin/categories" element={<AdminCategories />} />
+                <Route path="/admin/orders" element={<AdminOrders />} />
+                <Route path="/admin/pincodes" element={<AdminPincodes />} />
+                <Route path="/admin/shipping" element={<AdminShipping />} />
+                <Route path="/admin/settings" element={<AdminSettings />} />
+                <Route path="/admin/support" element={<AdminSupport />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/coupons" element={<AdminCoupons />} />
+                <Route path="/admin/utr" element={<AdminUtrManagement />} />
+                
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <CustomerSupportChat />
+            </CompareProvider>
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
