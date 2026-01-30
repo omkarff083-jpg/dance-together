@@ -804,7 +804,7 @@ export default function CheckoutPayment() {
 
   return (
     <Layout>
-      <div className="container px-3 md:px-4 py-4 md:py-8 pb-40 md:pb-8">
+      <div className="container px-3 md:px-4 py-4 md:py-8 pb-28 md:pb-8">
         {/* Mobile Header */}
         <div className="md:hidden mb-4">
           <div className="flex items-center gap-3 mb-2">
@@ -842,8 +842,8 @@ export default function CheckoutPayment() {
             <Card className="p-3 md:p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2 md:gap-3 min-w-0">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm md:text-base font-medium">Delivering to</p>
@@ -871,14 +871,14 @@ export default function CheckoutPayment() {
               </h2>
               
               {appliedCoupon ? (
-                <div className="flex items-center justify-between p-2 md:p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center justify-between p-2 md:p-4 bg-secondary/50 border border-border rounded-lg">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <Check className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary flex items-center justify-center">
+                      <Check className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm md:text-base font-semibold text-green-800">{appliedCoupon.code}</p>
-                      <p className="text-xs md:text-sm text-green-600">
+                      <p className="text-sm md:text-base font-semibold">{appliedCoupon.code}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">
                         {appliedCoupon.discount_type === 'percentage' 
                           ? `${appliedCoupon.discount_value}% off`
                           : `₹${appliedCoupon.discount_value} off`}
@@ -911,164 +911,100 @@ export default function CheckoutPayment() {
               )}
             </Card>
 
-            {/* Payment Method - Flipkart Style Accordion */}
-            <Card className="p-0 md:p-6 overflow-hidden">
-              <h2 className="font-semibold text-base md:text-lg p-3 md:p-0 md:mb-4 border-b md:border-b-0">Payment Options</h2>
-              
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="divide-y md:space-y-3 md:divide-y-0">
-                {isRazorpayAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'razorpay' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="razorpay" id="razorpay" />
-                    <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <CreditCard className="h-4 w-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">{paymentSettings?.razorpay_display_name || 'UPI'}</p>
-                            <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_display_description || 'Pay by any UPI app'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
+            {/* Payment Method (simple list like screenshot) */}
+            <Card className="p-3 md:p-6">
+              <h2 className="font-semibold text-base md:text-lg mb-3 md:mb-4">Select Payment Method</h2>
+
+              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
+                {isRazorpayUpiAvailable && (
+                  <Label
+                    htmlFor="razorpay_upi"
+                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                      paymentMethod === 'razorpay_upi' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <RadioGroupItem value="razorpay_upi" id="razorpay_upi" />
+                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                      <span className="text-xs font-semibold">RZP</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{paymentSettings?.razorpay_upi_display_name || 'UPI (Pay & Upload UTR)'}</p>
+                      <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_upi_display_description || 'Pay and upload UTR'}</p>
+                    </div>
+                  </Label>
                 )}
 
-                {isRazorpayUpiAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'razorpay_upi' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="razorpay_upi" id="razorpay_upi" />
-                    <Label htmlFor="razorpay_upi" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-                          <span className="text-white font-bold text-xs">RZP</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.razorpay_upi_display_name || 'Credit / Debit / ATM Card'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_upi_display_description || 'Add and secure cards as per RBI guidelines'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
+                {isUpiAvailable && (
+                  <Label
+                    htmlFor="upi"
+                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                      paymentMethod === 'upi' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <RadioGroupItem value="upi" id="upi" />
+                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                      <QrCode className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{paymentSettings?.upi_display_name || 'Pay via UPI'}</p>
+                      <p className="text-xs text-muted-foreground">{paymentSettings?.upi_display_description || 'Scan QR code or pay to UPI ID'}</p>
+                    </div>
+                  </Label>
+                )}
+
+                {isCodAvailable && (
+                  <Label
+                    htmlFor="cod"
+                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                      paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <RadioGroupItem value="cod" id="cod" />
+                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                      <Banknote className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</p>
+                      <p className="text-xs text-muted-foreground">{paymentSettings?.cod_display_description || 'Pay when you receive your order'}</p>
+                    </div>
+                  </Label>
+                )}
+
+                {/* Keep other gateways available, but in the same simple UI */}
+                {isRazorpayAvailable && (
+                  <Label
+                    htmlFor="razorpay"
+                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                      paymentMethod === 'razorpay' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <RadioGroupItem value="razorpay" id="razorpay" />
+                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                      <CreditCard className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{paymentSettings?.razorpay_display_name || 'Card/UPI via Razorpay'}</p>
+                      <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_display_description || 'Pay securely using Razorpay'}</p>
+                    </div>
+                  </Label>
                 )}
 
                 {isPaytmAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'paytm' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
+                  <Label
+                    htmlFor="paytm"
+                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                      paymentMethod === 'paytm' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
                     <RadioGroupItem value="paytm" id="paytm" />
-                    <Label htmlFor="paytm" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <Wallet className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.paytm_display_name || 'Paytm'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.paytm_display_description || 'UPI, Wallet, Net Banking'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-                )}
-
-                {isCashfreeAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cashfree' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="cashfree" id="cashfree" />
-                    <Label htmlFor="cashfree" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
-                          <CreditCard className="h-4 w-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.cashfree_display_name || 'EMI'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.cashfree_display_description || 'Credit Card EMI'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-                )}
-
-                {isPhonePeAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'phonepe' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="phonepe" id="phonepe" />
-                    <Label htmlFor="phonepe" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
-                          <Smartphone className="h-4 w-4 text-indigo-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.phonepe_display_name || 'PhonePe'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.phonepe_display_description || 'UPI & Wallet'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-                )}
-
-                {isBharatPayAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'bharatpay' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="bharatpay" id="bharatpay" />
-                    <Label htmlFor="bharatpay" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
-                          <Building2 className="h-4 w-4 text-orange-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.bharatpay_display_name || 'BharatPay'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.bharatpay_display_description || 'UPI & Bank'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-                )}
-
-                {isPayYouAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'payyou' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="payyou" id="payyou" />
-                    <Label htmlFor="payyou" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center">
-                          <Wallet className="h-4 w-4 text-teal-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.payyou_display_name || 'PayYou Biz'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.payyou_display_description || 'Business payment'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-                )}
-                
-                {isUpiAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'upi' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="upi" id="upi" />
-                    <Label htmlFor="upi" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
-                          <QrCode className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.upi_display_name || 'Pay via UPI'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.upi_display_description || 'Scan QR or UPI ID'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-                )}
-                
-                {isCodAvailable && (
-                  <div className={`flex items-center space-x-3 p-3 md:p-4 md:border md:rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'bg-primary/5 md:border-primary' : 'hover:bg-secondary/50'}`}>
-                    <RadioGroupItem value="cod" id="cod" />
-                    <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
-                          <Banknote className="h-4 w-4 text-amber-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</p>
-                          <p className="text-xs text-muted-foreground">{paymentSettings?.cod_display_description || 'Pay on delivery'}</p>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
+                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                      <Wallet className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{paymentSettings?.paytm_display_name || 'Paytm'}</p>
+                      <p className="text-xs text-muted-foreground">{paymentSettings?.paytm_display_description || 'UPI, Wallet, Net Banking'}</p>
+                    </div>
+                  </Label>
                 )}
               </RadioGroup>
 
@@ -1079,127 +1015,97 @@ export default function CheckoutPayment() {
               )}
 
               {!isCodAvailable && (isRazorpayAvailable || isUpiAvailable || isPaytmAvailable || isCashfreeAvailable || isBharatPayAvailable || isPayYouAvailable || isPhonePeAvailable) && (
-                <div className="mt-3 md:mt-4 p-2 md:p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-xs md:text-sm text-amber-700">
-                    💳 COD not available for {!isGlobalCodEnabled ? 'this store' : 'some items'}.
+                <div className="mt-3 md:mt-4 p-2 md:p-3 bg-secondary/50 border border-border rounded-lg">
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    COD not available for {!isGlobalCodEnabled ? 'this store' : 'some items'}.
                   </p>
                 </div>
               )}
             </Card>
-          </div>
 
-          {/* Order Summary - Fixed bottom on mobile */}
-          <div className="fixed bottom-14 left-0 right-0 z-40 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:relative md:bottom-auto md:border-t-0 md:shadow-none lg:block">
-            <Card className="border-0 md:border rounded-none md:rounded-lg p-0 md:p-6 md:sticky md:top-24">
-              {/* Compact view on mobile */}
-              <div className="md:hidden px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold">₹{finalTotal.toLocaleString()}</span>
-                      {discountAmount > 0 && (
-                        <span className="text-xs line-through text-muted-foreground">₹{subtotalWithShipping.toLocaleString()}</span>
-                      )}
+            {/* Order Summary (match screenshot: not fixed) */}
+            <Card className="p-3 md:p-6">
+              <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
+
+              <div className="space-y-3">
+                {checkoutItems.slice(0, 2).map((item, index) => (
+                  <div key={isBuyNowMode ? `buynow-${index}` : (item as any).id} className="flex gap-3">
+                    <div className="w-12 h-12 rounded bg-secondary overflow-hidden flex-shrink-0">
+                      <img
+                        src={item.product?.images?.[0] || 'https://via.placeholder.com/48'}
+                        alt={item.product?.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {checkoutItems.length} item(s) • {shipping === 0 ? 'Free delivery' : `+₹${shipping} delivery`}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handlePayment}
-                    disabled={loading || !paymentMethod}
-                    className="shrink-0"
-                  >
-                    {loading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                    {paymentMethod === 'cod' ? 'Place Order' : 'Pay Now'}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Full view on desktop */}
-              <div className="hidden md:block">
-                <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
-                
-                <div className="space-y-3 max-h-48 overflow-y-auto">
-                  {checkoutItems.map((item, index) => (
-                    <div key={isBuyNowMode ? `buynow-${index}` : (item as any).id} className="flex gap-3">
-                      <div className="w-12 h-12 rounded bg-secondary overflow-hidden flex-shrink-0">
-                        <img
-                          src={item.product?.images?.[0] || 'https://via.placeholder.com/48'}
-                          alt={item.product?.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.product?.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Qty: {item.quantity}
-                          {item.size && ` • Size: ${item.size}`}
-                          {item.color && ` • ${item.color}`}
-                        </p>
-                      </div>
-                      <p className="text-sm font-medium">
-                        ₹{((item.product?.sale_price || item.product?.price || 0) * item.quantity).toLocaleString()}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.product?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Qty: {item.quantity}
+                        {item.size && ` • Size: ${item.size}`}
+                        {item.color && ` • ${item.color}`}
                       </p>
                     </div>
-                  ))}
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>₹{checkoutTotal.toLocaleString()}</span>
+                    <p className="text-sm font-medium">
+                      ₹{((item.product?.sale_price || item.product?.price || 0) * item.quantity).toLocaleString()}
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
-                  </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span className="flex items-center gap-1">
-                        <Ticket className="h-3 w-3" />
-                        Discount ({appliedCoupon?.code})
-                      </span>
-                      <span>-₹{discountAmount.toLocaleString()}</span>
-                    </div>
-                  )}
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="flex justify-between font-semibold text-lg mb-6">
-                  <span>Total</span>
-                  <div className="text-right">
-                    {discountAmount > 0 && (
-                      <span className="text-sm line-through text-muted-foreground mr-2">
-                        ₹{subtotalWithShipping.toLocaleString()}
-                      </span>
-                    )}
-                    <span>₹{finalTotal.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handlePayment}
-                  className="w-full"
-                  size="lg"
-                  disabled={loading || !paymentMethod}
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  {paymentMethod === 'razorpay' ? 'Pay with Razorpay' : 
-                   paymentMethod === 'razorpay_upi' ? `Pay with ${paymentSettings?.razorpay_upi_display_name || 'Razorpay UPI'}` :
-                   paymentMethod === 'paytm' ? 'Pay with Paytm' :
-                   paymentMethod === 'cashfree' ? 'Pay with Cashfree' :
-                   paymentMethod === 'phonepe' ? 'Pay with PhonePe' :
-                   paymentMethod === 'bharatpay' ? 'Pay with BharatPay' :
-                   paymentMethod === 'payyou' ? 'Pay with PayYou' :
-                   paymentMethod === 'upi' ? `${paymentSettings?.upi_display_name || 'Generate UPI QR'}` : 'Place Order (COD)'}
-                </Button>
+                ))}
               </div>
+
+              <Separator className="my-4" />
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>₹{checkoutTotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span className="flex items-center gap-1">
+                      <Ticket className="h-3 w-3" />
+                      Discount ({appliedCoupon?.code})
+                    </span>
+                    <span>-₹{discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+
+              <Separator className="my-4" />
+
+              <div className="flex justify-between font-semibold text-lg mb-4">
+                <span>Total</span>
+                <div className="text-right">
+                  {discountAmount > 0 && (
+                    <span className="text-sm line-through text-muted-foreground mr-2">
+                      ₹{subtotalWithShipping.toLocaleString()}
+                    </span>
+                  )}
+                  <span>₹{finalTotal.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <Button
+                onClick={handlePayment}
+                className="w-full"
+                size="lg"
+                disabled={loading || !paymentMethod}
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {paymentMethod === 'cod'
+                  ? 'Place Order'
+                  : paymentMethod === 'upi'
+                    ? `Pay with ${paymentSettings?.upi_display_name || 'UPI'}`
+                    : paymentMethod === 'razorpay_upi'
+                      ? `Pay with ${paymentSettings?.razorpay_upi_display_name || 'UPI'}`
+                      : paymentMethod === 'razorpay'
+                        ? 'Pay with Razorpay'
+                        : 'Pay Now'}
+              </Button>
             </Card>
           </div>
         </div>

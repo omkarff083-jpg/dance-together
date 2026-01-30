@@ -1,16 +1,30 @@
-import { useState, useRef, TouchEvent } from 'react';
+import { useEffect, useRef, useState, TouchEvent } from 'react';
 
 interface SwipeableImageGalleryProps {
   images: string[];
   productName: string;
+  /** Optional controlled index (used when you want thumbnails to control the gallery). */
+  currentIndex?: number;
   onImageChange?: (index: number) => void;
 }
 
-export function SwipeableImageGallery({ images, productName, onImageChange }: SwipeableImageGalleryProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export function SwipeableImageGallery({
+  images,
+  productName,
+  currentIndex: controlledIndex,
+  onImageChange,
+}: SwipeableImageGalleryProps) {
+  const [currentIndex, setCurrentIndex] = useState(controlledIndex ?? 0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof controlledIndex === 'number' && controlledIndex !== currentIndex) {
+      setCurrentIndex(controlledIndex);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlledIndex]);
 
   // Minimum swipe distance
   const minSwipeDistance = 50;

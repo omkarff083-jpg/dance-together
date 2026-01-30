@@ -455,28 +455,50 @@ export default function ProductDetail() {
         <SwipeableImageGallery 
           images={images} 
           productName={product.name}
+          currentIndex={selectedImage}
           onImageChange={setSelectedImage}
         />
 
-        {/* Product Info */}
-        <div className="px-4 py-3 space-y-3">
-          {product.category && (
-            <p className="text-xs text-primary font-medium">{product.category.name}</p>
-          )}
-          
-          <h1 className="text-lg font-semibold leading-tight">{product.name}</h1>
-          
-          {/* Rating */}
-          {reviews.length > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-sm font-medium">
-                {avgRating.toFixed(1)} <Star className="h-3 w-3 fill-current" />
-              </div>
-              <span className="text-sm text-muted-foreground">
-                ({reviews.length} reviews)
-              </span>
+        {/* Thumbnails (match screenshot) */}
+        {images.length > 1 && (
+          <div className="px-4 pt-3">
+            <div className="flex gap-3">
+              {images.slice(0, 5).map((image, idx) => (
+                <button
+                  key={`${image}-${idx}`}
+                  type="button"
+                  onClick={() => setSelectedImage(idx)}
+                  className={`h-14 w-14 overflow-hidden rounded-md border ${
+                    selectedImage === idx ? 'border-primary' : 'border-border'
+                  }`}
+                  aria-label={`Go to image ${idx + 1}`}
+                >
+                  <img
+                    src={image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                    loading="lazy"
+                  />
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Product Info */}
+        <div className="px-4 py-4 space-y-3">
+          <h1 className="font-display text-2xl font-semibold tracking-wide leading-tight">
+            {product.name}
+          </h1>
+
+          {/* Rating (always visible like screenshot) */}
+          <div className="flex items-center gap-2">
+            <StarRating rating={Math.round(avgRating)} readonly size="sm" />
+            <span className="text-sm text-muted-foreground">
+              {avgRating.toFixed(1)} ({reviews.length} reviews)
+            </span>
+          </div>
 
           {/* Price */}
           <div className="flex items-center gap-3">
@@ -486,7 +508,7 @@ export default function ProductDetail() {
                 <span className="text-lg text-muted-foreground line-through">
                   ₹{product.price.toLocaleString()}
                 </span>
-                <Badge className="bg-green-600 text-white">{discountPercent}% OFF</Badge>
+                <Badge className="bg-secondary text-secondary-foreground">-{discountPercent}%</Badge>
               </>
             )}
           </div>
@@ -533,9 +555,10 @@ export default function ProductDetail() {
         )}
 
         {/* Quantity */}
-        <div className="px-4 py-3 flex items-center justify-between">
-          <span className="text-sm font-medium">Quantity</span>
-          <div className="flex items-center gap-3">
+        <div className="px-4 py-3">
+          <p className="text-sm font-medium mb-2">Quantity</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
             <Button
               variant="outline"
               size="icon"
@@ -553,10 +576,42 @@ export default function ProductDetail() {
             >
               <Plus className="h-4 w-4" />
             </Button>
+            </div>
+            <span className="text-sm text-muted-foreground">{product.stock} available</span>
           </div>
         </div>
 
         <Separator />
+
+        {/* Actions (match screenshot) */}
+        <div className="px-4 py-4 space-y-3">
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={handleAddToCart}
+              disabled={product.stock === 0}
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Add to Cart
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleAddToWishlist}
+              aria-label="Add to wishlist"
+            >
+              <Heart className="h-5 w-5" />
+            </Button>
+          </div>
+          <Button 
+            className="w-full"
+            onClick={handleBuyNow}
+            disabled={product.stock === 0}
+          >
+            Buy Now
+          </Button>
+        </div>
 
         {/* Delivery Check */}
         <div className="px-4 py-3">
@@ -564,32 +619,6 @@ export default function ProductDetail() {
         </div>
 
         <Separator />
-
-        {/* Action Buttons */}
-        <div className="px-4 py-3 flex gap-3">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={handleAddToWishlist}
-          >
-            <Heart className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={handleAddToCompare}
-            className={isInCompare(product.id) ? 'bg-primary/10' : ''}
-          >
-            <GitCompare className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={handleShare}
-          >
-            <Share2 className="h-5 w-5" />
-          </Button>
-        </div>
 
         {/* Features */}
         <div className="px-4 py-4 grid grid-cols-3 gap-2">
@@ -714,27 +743,7 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* Fixed Bottom Actions */}
-        <div className="fixed bottom-14 left-0 right-0 bg-background border-t shadow-lg z-40">
-          <div className="flex gap-3 p-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={handleAddToCart}
-              disabled={product.stock === 0}
-            >
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Add to Cart
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={handleBuyNow}
-              disabled={product.stock === 0}
-            >
-              Buy Now
-            </Button>
-          </div>
-        </div>
+        {/* (Removed fixed bottom actions to match screenshot layout) */}
       </div>
 
       {/* Desktop Layout */}
