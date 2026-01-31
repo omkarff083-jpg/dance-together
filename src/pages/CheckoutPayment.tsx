@@ -101,6 +101,7 @@ export default function CheckoutPayment() {
   const { items, totalAmount, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [onlineExpanded, setOnlineExpanded] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [showUpiDialog, setShowUpiDialog] = useState(false);
@@ -782,11 +783,14 @@ export default function CheckoutPayment() {
       {/* Main Content */}
       <div className="px-4 pt-6 space-y-4">
         {/* Payment Options */}
-        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
+        <div className="space-y-3">
           {/* COD Option */}
           {isCodAvailable && (
-            <Label
-              htmlFor="cod"
+            <div
+              onClick={() => {
+                setPaymentMethod('cod');
+                setOnlineExpanded(false);
+              }}
               className={`flex items-center gap-4 rounded-xl border-2 p-4 cursor-pointer transition-all ${
                 paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border'
               }`}
@@ -795,22 +799,27 @@ export default function CheckoutPayment() {
                 <span className="text-lg font-bold">₹{codPrice.toLocaleString()}</span>
               </div>
               <div className="flex-1 flex items-center gap-3">
+                <Banknote className="h-5 w-5 text-green-600" />
                 <span className="font-medium">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</span>
-                <span className="text-xl">💰</span>
               </div>
-              <RadioGroupItem value="cod" id="cod" />
-            </Label>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                paymentMethod === 'cod' ? 'border-primary bg-primary' : 'border-muted-foreground'
+              }`}>
+                {paymentMethod === 'cod' && <Check className="h-3 w-3 text-white" />}
+              </div>
+            </div>
           )}
 
-          {/* Online Payment Option */}
+          {/* Online Payment Option - Expandable */}
           {isOnlineAvailable && (
-            <Label
-              htmlFor="online"
-              className={`relative flex flex-col rounded-xl border-2 cursor-pointer transition-all overflow-hidden ${
-                paymentMethod !== 'cod' ? 'border-primary bg-primary/5' : 'border-border'
-              }`}
-            >
-              <div className="flex items-center gap-4 p-4">
+            <div className={`rounded-xl border-2 overflow-hidden transition-all ${
+              paymentMethod !== 'cod' && paymentMethod !== '' ? 'border-primary bg-primary/5' : 'border-border'
+            }`}>
+              {/* Header - Click to expand */}
+              <div
+                onClick={() => setOnlineExpanded(!onlineExpanded)}
+                className="flex items-center gap-4 p-4 cursor-pointer"
+              >
                 <div className="flex flex-col items-start border-r pr-4">
                   {onlineSaving > 0 && (
                     <span className="text-xs text-muted-foreground line-through">₹{onlineOriginalPrice.toLocaleString()}</span>
@@ -822,24 +831,187 @@ export default function CheckoutPayment() {
                     </span>
                   )}
                 </div>
-                <div className="flex-1 flex items-center gap-3">
-                  <span className="font-medium">Pay Online</span>
-                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">paytm</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-blue-600" />
+                    <span className="font-medium">Pay Online</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Cards, UPI, Net Banking, Wallets</p>
                 </div>
-                <RadioGroupItem 
-                  value={paymentSettings?.razorpay_enabled ? 'razorpay' : paymentSettings?.upi_enabled ? 'upi' : paymentSettings?.razorpay_upi_enabled ? 'razorpay_upi' : 'paytm'} 
-                  id="online" 
-                />
+                {onlineExpanded ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
               </div>
-              
+
+              {/* Expanded Gateway Options */}
+              {onlineExpanded && (
+                <div className="border-t bg-secondary/30 p-3 space-y-2">
+                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-2">
+                    {/* Razorpay */}
+                    {paymentSettings?.razorpay_enabled && (
+                      <Label
+                        htmlFor="razorpay"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'razorpay' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.razorpay_display_name || 'Pay Online (Razorpay)'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.razorpay_display_description || 'Cards, UPI, Net Banking, Wallets'}</span>
+                        </div>
+                        <RadioGroupItem value="razorpay" id="razorpay" />
+                      </Label>
+                    )}
+
+                    {/* UPI */}
+                    {paymentSettings?.upi_enabled && paymentSettings?.upi_id && (
+                      <Label
+                        htmlFor="upi"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'upi' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center">
+                          <QrCode className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.upi_display_name || 'Pay via UPI'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.upi_display_description || 'Scan QR code or pay to UPI ID'}</span>
+                        </div>
+                        <RadioGroupItem value="upi" id="upi" />
+                      </Label>
+                    )}
+
+                    {/* Razorpay UPI */}
+                    {paymentSettings?.razorpay_upi_enabled && paymentSettings?.razorpay_upi_id && (
+                      <Label
+                        htmlFor="razorpay_upi"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'razorpay_upi' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center">
+                          <Smartphone className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.razorpay_upi_display_name || 'Razorpay UPI'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.razorpay_upi_display_description || 'Pay via QR & Enter TR ID'}</span>
+                        </div>
+                        <RadioGroupItem value="razorpay_upi" id="razorpay_upi" />
+                      </Label>
+                    )}
+
+                    {/* Paytm */}
+                    {paymentSettings?.paytm_enabled && (
+                      <Label
+                        htmlFor="paytm"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'paytm' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-sky-500 flex items-center justify-center">
+                          <Wallet className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.paytm_display_name || 'Paytm'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.paytm_display_description || 'Pay via Paytm Wallet, UPI, Cards'}</span>
+                        </div>
+                        <RadioGroupItem value="paytm" id="paytm" />
+                      </Label>
+                    )}
+
+                    {/* Cashfree */}
+                    {paymentSettings?.cashfree_enabled && (
+                      <Label
+                        htmlFor="cashfree"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'cashfree' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.cashfree_display_name || 'Cashfree'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.cashfree_display_description || 'Pay via Cards, UPI, Netbanking'}</span>
+                        </div>
+                        <RadioGroupItem value="cashfree" id="cashfree" />
+                      </Label>
+                    )}
+
+                    {/* BharatPay */}
+                    {paymentSettings?.bharatpay_enabled && (
+                      <Label
+                        htmlFor="bharatpay"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'bharatpay' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center">
+                          <Banknote className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.bharatpay_display_name || 'BharatPay'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.bharatpay_display_description || 'Pay via UPI & Cards'}</span>
+                        </div>
+                        <RadioGroupItem value="bharatpay" id="bharatpay" />
+                      </Label>
+                    )}
+
+                    {/* PayYou */}
+                    {paymentSettings?.payyou_enabled && (
+                      <Label
+                        htmlFor="payyou"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'payyou' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-teal-500 flex items-center justify-center">
+                          <Wallet className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.payyou_display_name || 'PayYou'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.payyou_display_description || 'Quick & Secure Payment'}</span>
+                        </div>
+                        <RadioGroupItem value="payyou" id="payyou" />
+                      </Label>
+                    )}
+
+                    {/* PhonePe */}
+                    {paymentSettings?.phonepe_enabled && (
+                      <Label
+                        htmlFor="phonepe"
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                          paymentMethod === 'phonepe' ? 'bg-primary/10 border border-primary' : 'bg-background border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-purple-700 flex items-center justify-center">
+                          <Smartphone className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{paymentSettings?.phonepe_display_name || 'PhonePe'}</span>
+                          <span className="text-xs text-muted-foreground">{paymentSettings?.phonepe_display_description || 'Pay via PhonePe UPI'}</span>
+                        </div>
+                        <RadioGroupItem value="phonepe" id="phonepe" />
+                      </Label>
+                    )}
+                  </RadioGroup>
+                </div>
+              )}
+
               {/* Extra discount banner */}
               <div className="bg-gradient-to-r from-emerald-100 to-emerald-50 dark:from-emerald-900/30 dark:to-emerald-800/20 px-4 py-2 flex items-center gap-2">
                 <span className="text-emerald-600">✨</span>
                 <span className="text-sm text-emerald-700 dark:text-emerald-400">Extra ₹10 OFF with UPI</span>
               </div>
-            </Label>
+            </div>
           )}
-        </RadioGroup>
+        </div>
 
         {/* Reselling section */}
         <div className="flex items-center justify-between py-4 border-t border-b bg-secondary/30 -mx-4 px-4">
