@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, CreditCard, QrCode, Banknote, Copy, Check, Smartphone, CheckCircle, ArrowLeft, Wallet, Building2, Ticket, X, MapPin, Shield } from 'lucide-react';
+import { Loader2, ArrowLeft, ChevronRight, ChevronUp, ChevronDown, Ticket, CreditCard, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Layout } from '@/components/layout/Layout';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useCart, BuyNowItem } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { QrCode, Smartphone, Banknote, Copy, Wallet } from 'lucide-react';
 
 // Helper function to convert number to words
 const numberToWords = (num: number): string => {
@@ -75,7 +74,6 @@ interface PaymentSettings {
   cod_enabled: boolean;
   cod_display_name: string | null;
   cod_display_description: string | null;
-  // Shipping settings
   shipping_enabled: boolean;
   shipping_charge: number;
   free_shipping_threshold: number;
@@ -124,6 +122,27 @@ export default function CheckoutPayment() {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [welcomeCouponChecked, setWelcomeCouponChecked] = useState(false);
   const [customerIp, setCustomerIp] = useState<string | null>(null);
+  const [priceDetailsOpen, setPriceDetailsOpen] = useState(true);
+  
+  // Countdown timer state
+  const [timeLeft, setTimeLeft] = useState({ hours: 1, minutes: 26, seconds: 42 });
+
+  // Countdown timer effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        }
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch customer IP on mount
   useEffect(() => {
@@ -172,7 +191,6 @@ export default function CheckoutPayment() {
       return;
     }
 
-    // Load Razorpay script
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
@@ -211,24 +229,18 @@ export default function CheckoutPayment() {
         phonepe_shipping_charge: (data as any).phonepe_shipping_charge ?? 0,
         cod_shipping_charge: (data as any).cod_shipping_charge ?? 0,
       } as PaymentSettings);
-      if (data.razorpay_enabled) {
+      
+      // Default to COD first, then online
+      if ((data as any).cod_enabled !== false) {
+        setPaymentMethod('cod');
+      } else if (data.razorpay_enabled) {
         setPaymentMethod('razorpay');
       } else if ((data as any).razorpay_upi_enabled && (data as any).razorpay_upi_id) {
         setPaymentMethod('razorpay_upi');
       } else if ((data as any).paytm_enabled) {
         setPaymentMethod('paytm');
-      } else if ((data as any).cashfree_enabled) {
-        setPaymentMethod('cashfree');
-      } else if ((data as any).phonepe_enabled) {
-        setPaymentMethod('phonepe');
-      } else if ((data as any).bharatpay_enabled) {
-        setPaymentMethod('bharatpay');
-      } else if ((data as any).payyou_enabled) {
-        setPaymentMethod('payyou');
       } else if (data.upi_enabled && data.upi_id) {
         setPaymentMethod('upi');
-      } else if ((data as any).cod_enabled !== false) {
-        setPaymentMethod('cod');
       } else {
         setPaymentMethod('');
       }
@@ -242,14 +254,16 @@ export default function CheckoutPayment() {
     ? (buyNowItem.product.sale_price || buyNowItem.product.price) * buyNowItem.quantity
     : totalAmount;
 
-  // Calculate shipping based on admin settings
-  const calculateShipping = () => {
-    // If shipping is disabled globally, return 0
-    if (!paymentSettings?.shipping_enabled) {
-      return 0;
-    }
+  // Calculate original price (before sale)
+  const originalTotal = checkoutItems.reduce((sum, item) => {
+    return sum + (item.product.price * item.quantity);
+  }, 0);
 
-    // Check for product-level shipping charges first
+  const productDiscount = originalTotal - checkoutTotal;
+
+  const calculateShipping = () => {
+    if (!paymentSettings?.shipping_enabled) return 0;
+
     let productShipping = 0;
     let hasProductShipping = false;
     checkoutItems.forEach(item => {
@@ -260,26 +274,21 @@ export default function CheckoutPayment() {
       }
     });
 
-    // If any product has custom shipping, use that
     if (hasProductShipping) {
-      // Add gateway-specific charge if applicable
       const gatewayCharge = getGatewayShippingCharge();
       return productShipping + gatewayCharge;
     }
 
-    // Check free shipping threshold
     const freeThreshold = paymentSettings?.free_shipping_threshold || 0;
     if (freeThreshold > 0 && checkoutTotal >= freeThreshold) {
       return 0;
     }
 
-    // Use global shipping charge + gateway-specific charge
     const globalCharge = paymentSettings?.shipping_charge || 0;
     const gatewayCharge = getGatewayShippingCharge();
     return globalCharge + gatewayCharge;
   };
 
-  // Get gateway-specific shipping charge
   const getGatewayShippingCharge = () => {
     if (!paymentSettings) return 0;
     
@@ -299,54 +308,42 @@ export default function CheckoutPayment() {
 
   const shipping = calculateShipping();
   const subtotalWithShipping = checkoutTotal + shipping;
+  const totalDiscount = productDiscount + discountAmount;
   const finalTotal = subtotalWithShipping - discountAmount;
 
-  // Check and auto-apply welcome coupon for first-time users
+  // Calculate online payment savings (e.g., ₹16 less than COD)
+  const onlineSaving = paymentSettings?.cod_shipping_charge 
+    ? Math.max(0, (paymentSettings.cod_shipping_charge || 0) - (paymentSettings.razorpay_shipping_charge || paymentSettings.upi_shipping_charge || 0))
+    : 16;
+
+  // Coupon handling
   const checkAndApplyWelcomeCoupon = async () => {
     if (!user || welcomeCouponChecked || appliedCoupon) return;
     
     setWelcomeCouponChecked(true);
     
     try {
-      const { data: previousOrders, error: orderError } = await supabase
+      const { data: previousOrders } = await supabase
         .from('orders')
         .select('id')
         .eq('user_id', user.id)
         .neq('status', 'cancelled')
         .limit(1);
 
-      if (orderError) {
-        console.log('Error checking previous orders:', orderError);
-        return;
-      }
+      if (previousOrders && previousOrders.length > 0) return;
 
-      if (previousOrders && previousOrders.length > 0) {
-        console.log('User has previous orders, not applying welcome coupon');
-        return;
-      }
-
-      const { data: welcomeCoupon, error: couponError } = await supabase
+      const { data: welcomeCoupon } = await supabase
         .from('coupons')
         .select('*')
         .eq('code', 'WELCOME10')
         .eq('is_active', true)
         .maybeSingle();
 
-      if (couponError || !welcomeCoupon) {
-        console.log('Welcome coupon not found or inactive');
-        return;
-      }
+      if (!welcomeCoupon) return;
 
-      if (welcomeCoupon.valid_from && new Date(welcomeCoupon.valid_from) > new Date()) {
-        return;
-      }
-      if (welcomeCoupon.valid_until && new Date(welcomeCoupon.valid_until) < new Date()) {
-        return;
-      }
-
-      if (welcomeCoupon.usage_limit && welcomeCoupon.used_count >= welcomeCoupon.usage_limit) {
-        return;
-      }
+      if (welcomeCoupon.valid_from && new Date(welcomeCoupon.valid_from) > new Date()) return;
+      if (welcomeCoupon.valid_until && new Date(welcomeCoupon.valid_until) < new Date()) return;
+      if (welcomeCoupon.usage_limit && welcomeCoupon.used_count >= welcomeCoupon.usage_limit) return;
 
       setCouponCode('WELCOME10');
       
@@ -371,9 +368,7 @@ export default function CheckoutPayment() {
         max_discount_amount: welcomeCoupon.max_discount_amount,
       });
       setDiscountAmount(discount);
-      toast.success(`🎉 Welcome! First-order discount applied - You save ₹${discount.toLocaleString()}!`, {
-        duration: 5000,
-      });
+      toast.success(`🎉 Welcome! First-order discount applied - You save ₹${discount.toLocaleString()}!`);
     } catch (error) {
       console.log('Error checking welcome coupon:', error);
     }
@@ -401,7 +396,6 @@ export default function CheckoutPayment() {
         .maybeSingle();
 
       if (error) throw error;
-
       if (!coupon) {
         toast.error('Invalid coupon code');
         setCouponLoading(false);
@@ -455,7 +449,6 @@ export default function CheckoutPayment() {
       setDiscountAmount(discount);
       toast.success(`Coupon applied! You save ₹${discount.toLocaleString()}`);
     } catch (error) {
-      console.error('Coupon error:', error);
       toast.error('Failed to apply coupon');
     } finally {
       setCouponLoading(false);
@@ -469,40 +462,35 @@ export default function CheckoutPayment() {
     toast.info('Coupon removed');
   };
 
-  const createOrder = async (paymentId?: string, status: string = 'pending') => {
-    if (!addressData) throw new Error('Address data missing');
-    
+  // Order creation & payment handlers
+  const createOrder = async (method: string, paymentId?: string, status: string = 'pending') => {
     const orderData: any = {
       total_amount: finalTotal,
-      status: status,
-      payment_method: paymentMethod,
-      payment_id: paymentId || null,
-      discount_amount: discountAmount,
+      status,
+      payment_method: method,
+      shipping_address: addressData as any,
       coupon_code: appliedCoupon?.code || null,
-      customer_ip: customerIp,
-      shipping_address: {
-        fullName: addressData.fullName,
-        email: addressData.email,
-        phone: addressData.phone,
-        address: addressData.address,
-        city: addressData.city,
-        state: addressData.state,
-        pincode: addressData.pincode,
-      },
+      discount_amount: discountAmount,
     };
-
-    if (user) {
+    
+    if (user?.id) {
       orderData.user_id = user.id;
-    } else {
-      orderData.user_id = null;
+    }
+    if (paymentId) {
+      orderData.payment_id = paymentId;
+    }
+    if (!user && addressData) {
       orderData.guest_email = addressData.email;
       orderData.guest_name = addressData.fullName;
       orderData.guest_phone = addressData.phone;
     }
+    if (customerIp) {
+      orderData.customer_ip = customerIp;
+    }
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .insert(orderData)
+      .insert([orderData])
       .select()
       .single();
 
@@ -510,85 +498,89 @@ export default function CheckoutPayment() {
 
     const orderItems = checkoutItems.map(item => ({
       order_id: order.id,
-      product_id: item.product_id,
-      product_name: item.product?.name || 'Unknown',
-      product_image: item.product?.images?.[0] || null,
+      product_id: item.product.id,
       quantity: item.quantity,
-      price: item.product?.sale_price || item.product?.price || 0,
-      size: item.size,
-      color: item.color,
+      price: item.product.sale_price || item.product.price,
+      product_name: item.product.name,
+      product_image: item.product.images?.[0] || null,
+      size: item.size || null,
+      color: item.color || null,
     }));
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
+    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
     if (itemsError) throw itemsError;
 
     if (appliedCoupon) {
-      const { data: couponData } = await supabase
-        .from('coupons')
-        .select('used_count')
-        .eq('id', appliedCoupon.id)
-        .single();
-      
-      if (couponData) {
-        await supabase
-          .from('coupons')
-          .update({ used_count: (couponData.used_count || 0) + 1 })
-          .eq('id', appliedCoupon.id);
-      }
-      
       await supabase.from('coupon_usage').insert({
         coupon_id: appliedCoupon.id,
         user_id: user?.id || null,
         order_id: order.id,
       });
-    }
-
-    if (!user) {
-      sessionStorage.setItem('guestOrderId', order.id);
-      sessionStorage.setItem('guestOrderEmail', addressData.email);
+      await supabase.from('coupons').update({ used_count: (appliedCoupon as any).used_count + 1 }).eq('id', appliedCoupon.id);
     }
 
     return order;
   };
 
-  const clearCheckoutItems = async () => {
-    sessionStorage.removeItem('checkoutAddress');
-    if (isBuyNowMode) {
-      sessionStorage.removeItem('buyNowItem');
-      setBuyNowItem(null);
-    } else {
-      await clearCart();
-    }
-  };
-
-  const handleRazorpayPayment = async () => {
-    if (!razorpayLoaded) {
-      toast.error('Payment system is loading, please wait');
+  const handlePayment = async () => {
+    if (!paymentMethod) {
+      toast.error('Please select a payment method');
       return;
     }
 
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
-        body: { amount: finalTotal * 100 },
+      if (paymentMethod === 'cod') {
+        const order = await createOrder('cod', undefined, 'confirmed');
+        if (!isBuyNowMode) {
+          clearCart();
+        }
+        sessionStorage.removeItem('buyNowItem');
+        sessionStorage.removeItem('checkoutAddress');
+        navigate(`/order-confirmation/${order.id}`);
+      } else if (paymentMethod === 'upi' || paymentMethod === 'razorpay_upi') {
+        const order = await createOrder(paymentMethod, undefined, 'awaiting_payment');
+        setPendingOrderId(order.id);
+        setShowUpiDialog(true);
+      } else if (paymentMethod === 'razorpay') {
+        await handleRazorpayPayment();
+      } else if (paymentMethod === 'paytm') {
+        const order = await createOrder('paytm', undefined, 'awaiting_payment');
+        setPendingOrderId(order.id);
+        setShowUpiDialog(true);
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error('Payment failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRazorpayPayment = async () => {
+    if (!razorpayLoaded) {
+      toast.error('Payment gateway is loading. Please try again.');
+      return;
+    }
+
+    try {
+      const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
+        body: { amount: finalTotal },
       });
 
-      if (error) throw error;
+      if (razorpayError) throw razorpayError;
 
       const options = {
-        key: data.key_id,
-        amount: data.order.amount,
-        currency: 'INR',
-        name: 'LUXE',
-        description: 'Fashion Store Purchase',
-        order_id: data.order.id,
+        key: razorpayOrder.key_id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'Store',
+        description: 'Order Payment',
+        order_id: razorpayOrder.id,
         handler: async (response: any) => {
           try {
-            const { error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
               body: {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -598,520 +590,318 @@ export default function CheckoutPayment() {
 
             if (verifyError) throw verifyError;
 
-            const order = await createOrder(response.razorpay_payment_id, 'confirmed');
-            await clearCheckoutItems();
-            
-            toast.success('Payment successful! Order confirmed.');
-            navigate(`/order-confirmation?orderId=${order.id}`);
+            if (verifyData.verified) {
+              const order = await createOrder('razorpay', response.razorpay_payment_id, 'confirmed');
+              if (!isBuyNowMode) {
+                clearCart();
+              }
+              sessionStorage.removeItem('buyNowItem');
+              sessionStorage.removeItem('checkoutAddress');
+              navigate(`/order-confirmation/${order.id}`);
+            } else {
+              toast.error('Payment verification failed');
+            }
           } catch (error) {
-            console.error('Payment verification error:', error);
-            toast.error('Payment verification failed. Order not placed.');
+            toast.error('Payment verification failed');
           }
-        },
-        modal: {
-          ondismiss: () => {
-            toast.error('Payment cancelled. Order not placed.');
-            setLoading(false);
-          },
         },
         prefill: {
           name: addressData?.fullName,
+          email: addressData?.email,
           contact: addressData?.phone,
-          email: addressData?.email || user?.email,
         },
-        theme: {
-          color: '#f97316',
-        },
+        theme: { color: '#9b1d54' },
       };
 
       const razorpay = new window.Razorpay(options);
-      razorpay.on('payment.failed', (response: any) => {
-        console.error('Payment failed:', response.error);
-        toast.error('Payment failed. Order not placed.');
-        setLoading(false);
-      });
       razorpay.open();
     } catch (error) {
-      console.error('Razorpay error:', error);
-      toast.error('Failed to initiate payment. Please check if Razorpay is configured in admin settings.');
-    } finally {
-      setLoading(false);
+      toast.error('Failed to initialize payment');
     }
   };
 
-  const handleUpiPayment = async () => {
-    setLoading(true);
+  // UPI Dialog handlers
+  const getUpiId = () => {
+    if (paymentMethod === 'razorpay_upi') {
+      return paymentSettings?.razorpay_upi_id || '';
+    }
+    return paymentSettings?.upi_id || '';
+  };
+
+  const copyUpiId = async () => {
     try {
-      const order = await createOrder(undefined, 'awaiting_payment');
-      setPendingOrderId(order.id);
-      setShowUpiDialog(true);
-    } catch (error) {
-      console.error('Order error:', error);
-      toast.error('Failed to create order');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const copyUpiId = () => {
-    const upiId = getCurrentUpiId();
-    if (upiId) {
-      navigator.clipboard.writeText(upiId);
+      await navigator.clipboard.writeText(getUpiId());
       setUpiCopied(true);
       toast.success('UPI ID copied!');
       setTimeout(() => setUpiCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy');
     }
   };
 
-  const confirmUpiPayment = async (withUtr?: boolean) => {
-    if (withUtr && pendingOrderId && utrNumber.trim()) {
-      const prefix = paymentMethod === 'razorpay_upi' ? 'TRID:' : 'UTR:';
-      await supabase
-        .from('orders')
-        .update({ payment_id: `${prefix}${utrNumber.trim()}`, status: 'awaiting_verification' })
-        .eq('id', pendingOrderId);
+  const openUpiApp = (app: string) => {
+    const upiId = getUpiId();
+    const amount = finalTotal;
+    const note = `Order ${pendingOrderId?.slice(0, 8).toUpperCase()}`;
+    
+    let upiUrl = '';
+    switch (app) {
+      case 'phonepe':
+        upiUrl = `phonepe://pay?pa=${upiId}&pn=Store&am=${amount}&tn=${note}`;
+        break;
+      case 'gpay':
+        upiUrl = `upi://pay?pa=${upiId}&pn=Store&am=${amount}&tn=${note}`;
+        break;
+      case 'paytm':
+        upiUrl = `paytmmp://pay?pa=${upiId}&pn=Store&am=${amount}&tn=${note}`;
+        break;
+      case 'bhim':
+        upiUrl = `upi://pay?pa=${upiId}&pn=Store&am=${amount}&tn=${note}`;
+        break;
+      case 'amazon':
+        upiUrl = `upi://pay?pa=${upiId}&pn=Store&am=${amount}&tn=${note}`;
+        break;
+      default:
+        upiUrl = `upi://pay?pa=${upiId}&pn=Store&am=${amount}&tn=${note}`;
     }
     
-    // Close dialog and clear states
-    setShowUpiDialog(false);
-    setUtrNumber('');
-    setPendingOrderId(null);
-    
-    // Clear checkout items
-    await clearCheckoutItems();
-    
-    // Show success message and redirect to confirmation page
-    toast.success('Order placed successfully! Payment will be verified shortly.');
-    navigate(`/order-confirmation?orderId=${pendingOrderId}`);
+    window.location.href = upiUrl;
   };
 
-  const handleUpiDialogClose = async (open: boolean) => {
-    if (!open && pendingOrderId) {
+  const handleUtrSubmit = async () => {
+    const expectedLength = paymentMethod === 'razorpay_upi' ? 20 : 12;
+    if (utrNumber.length !== expectedLength) {
+      toast.error(`Please enter a valid ${expectedLength}-digit ${paymentMethod === 'razorpay_upi' ? 'TR ID' : 'UTR number'}`);
+      return;
+    }
+
+    setLoading(true);
+    try {
       await supabase
         .from('orders')
-        .update({ status: 'cancelled' })
+        .update({ payment_id: utrNumber, status: 'awaiting_verification' })
         .eq('id', pendingOrderId);
-      
-      await supabase
-        .from('order_items')
-        .delete()
-        .eq('order_id', pendingOrderId);
-      
-      if (appliedCoupon) {
-        const { data: couponData } = await supabase
-          .from('coupons')
-          .select('used_count')
-          .eq('id', appliedCoupon.id)
-          .single();
-        
-        if (couponData && couponData.used_count > 0) {
-          await supabase
-            .from('coupons')
-            .update({ used_count: couponData.used_count - 1 })
-            .eq('id', appliedCoupon.id);
-        }
-        
-        await supabase
-          .from('coupon_usage')
-          .delete()
-          .eq('order_id', pendingOrderId);
+
+      if (!isBuyNowMode) {
+        clearCart();
       }
-      
-      setPendingOrderId(null);
-      toast.error('Payment not completed. Order cancelled.');
+      sessionStorage.removeItem('buyNowItem');
+      sessionStorage.removeItem('checkoutAddress');
+      setShowUpiDialog(false);
+      setShowSuccessDialog(true);
+    } catch (error) {
+      toast.error('Failed to submit payment details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpiDialogClose = (open: boolean) => {
+    if (!open && pendingOrderId) {
+      toast.info('Complete payment to confirm your order');
     }
     setShowUpiDialog(open);
   };
 
-  const handleSuccessClose = async () => {
-    await clearCheckoutItems();
-    setShowSuccessDialog(false);
-    navigate('/orders');
-  };
-
-  const openUpiApp = (app: string) => {
-    const upiId = getCurrentUpiId();
-    if (!upiId) return;
-    
-    const amount = finalTotal.toString();
-    const name = encodeURIComponent('LUXE Store');
-    const note = encodeURIComponent('Order Payment');
-    
-    const upiLink = `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
-    
-    window.location.href = upiLink;
-    
-    toast.info('Opening UPI app with amount ₹' + finalTotal);
-  };
-
-  const handlePayment = async () => {
-    if (!addressData) {
-      toast.error('Address data missing');
-      navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout');
-      return;
-    }
-
-    if (paymentMethod === 'razorpay') {
-      await handleRazorpayPayment();
-    } else if (paymentMethod === 'upi' || paymentMethod === 'razorpay_upi') {
-      await handleUpiPayment();
-    } else if (['paytm', 'cashfree', 'phonepe', 'bharatpay', 'payyou'].includes(paymentMethod)) {
-      toast.info(`${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} integration is coming soon. Please use another payment method.`);
-    } else {
-      setLoading(true);
-      try {
-        const order = await createOrder(undefined, 'confirmed');
-        await clearCheckoutItems();
-        toast.success('Order placed successfully! Pay on delivery.');
-        navigate(`/order-confirmation?orderId=${order.id}`);
-      } catch (error) {
-        console.error('Order error:', error);
-        toast.error('Failed to place order');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const generateUpiQR = (forRazorpayUpi?: boolean) => {
-    const upiId = forRazorpayUpi ? paymentSettings?.razorpay_upi_id : paymentSettings?.upi_id;
-    if (!upiId) return '';
-    const upiString = `upi://pay?pa=${upiId}&pn=LUXE&am=${finalTotal}&cu=INR`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
-  };
-
-  const getCurrentUpiId = () => {
-    return paymentMethod === 'razorpay_upi' ? paymentSettings?.razorpay_upi_id : paymentSettings?.upi_id;
-  };
-
-  const hasItems = isBuyNowMode ? !!buyNowItem : (user ? items.length > 0 : true);
-  if (!hasItems || !addressData) {
-    return null;
-  }
-
-  const isRazorpayAvailable = paymentSettings?.razorpay_enabled;
-  const isRazorpayUpiAvailable = paymentSettings?.razorpay_upi_enabled && paymentSettings?.razorpay_upi_id;
-  const isUpiAvailable = paymentSettings?.upi_enabled && paymentSettings?.upi_id;
-  const isPaytmAvailable = paymentSettings?.paytm_enabled;
-  const isCashfreeAvailable = paymentSettings?.cashfree_enabled;
-  const isBharatPayAvailable = paymentSettings?.bharatpay_enabled;
-  const isPayYouAvailable = paymentSettings?.payyou_enabled;
-  const isPhonePeAvailable = paymentSettings?.phonepe_enabled;
-  
+  // Payment method availability
+  const isCodAvailable = paymentSettings?.cod_enabled !== false && checkoutItems.every(item => (item.product as any)?.cod_available !== false);
+  const isOnlineAvailable = paymentSettings?.razorpay_enabled || paymentSettings?.upi_enabled || paymentSettings?.razorpay_upi_enabled || paymentSettings?.paytm_enabled;
   const isGlobalCodEnabled = paymentSettings?.cod_enabled !== false;
-  const allProductsAllowCod = checkoutItems.every(item => (item.product as any)?.cod_available !== false);
-  const isCodAvailable = isGlobalCodEnabled && allProductsAllowCod;
+
+  // Calculate prices for each method
+  const codPrice = finalTotal + (paymentSettings?.cod_shipping_charge || 0);
+  const onlinePrice = finalTotal;
+  const onlineOriginalPrice = codPrice;
+
+  const formatTime = (num: number) => num.toString().padStart(2, '0');
 
   return (
-    <Layout>
-      <div className="container px-3 md:px-4 py-4 md:py-8 pb-28 md:pb-8">
-        {/* Mobile Header */}
-        <div className="md:hidden mb-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-lg font-semibold">Payment</h1>
-          </div>
-        </div>
-
-        {/* Desktop Header */}
-        <div className="hidden md:flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="h-10 w-10"
-            onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
-          >
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-background border-b">
+        <div className="flex items-center h-14 px-4">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2">
             <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="font-display text-3xl font-bold flex items-center gap-3">
-            <CreditCard className="h-8 w-8" />
-            Payment
-          </h1>
+          </button>
+          <h1 className="ml-2 text-base font-semibold uppercase tracking-wide">Payment Method</h1>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-4 md:gap-8">
-          <div className="lg:col-span-2 space-y-4 md:space-y-6">
-            {/* Delivery Address Summary */}
-            <Card className="p-3 md:p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2 md:gap-3 min-w-0">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                    <MapPin className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm md:text-base font-medium">Delivering to</p>
-                    <p className="text-xs md:text-sm text-muted-foreground truncate">
-                      {addressData.fullName}, {addressData.address}, {addressData.city}, {addressData.state} - {addressData.pincode}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-xs md:text-sm h-7 md:h-8 px-2 md:px-3 shrink-0"
-                  onClick={() => navigate(isBuyNowMode ? '/checkout?mode=buynow' : '/checkout')}
-                >
-                  Change
-                </Button>
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center py-4 px-8">
+          <div className="flex items-center gap-0">
+            {/* Step 1 - Review (completed) */}
+            <div className="flex flex-col items-center">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                <Check className="h-4 w-4 text-white" />
               </div>
-            </Card>
-
-            {/* Coupon Code Section */}
-            <Card className="p-3 md:p-6">
-              <h2 className="font-semibold text-base md:text-lg mb-3 md:mb-4 flex items-center gap-2">
-                <Ticket className="h-4 w-4 md:h-5 md:w-5" />
-                Apply Coupon
-              </h2>
-              
-              {appliedCoupon ? (
-                <div className="flex items-center justify-between p-2 md:p-4 bg-secondary/50 border border-border rounded-lg">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary flex items-center justify-center">
-                      <Check className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm md:text-base font-semibold">{appliedCoupon.code}</p>
-                      <p className="text-xs md:text-sm text-muted-foreground">
-                        {appliedCoupon.discount_type === 'percentage' 
-                          ? `${appliedCoupon.discount_value}% off`
-                          : `₹${appliedCoupon.discount_value} off`}
-                        {appliedCoupon.max_discount_amount && ` (Max ₹${appliedCoupon.max_discount_amount})`}
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={removeCoupon}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter coupon code"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    className="uppercase h-9 md:h-10 text-sm"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleApplyCoupon}
-                    disabled={couponLoading}
-                    className="h-9 md:h-10 px-3 text-sm"
-                  >
-                    {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                  </Button>
-                </div>
-              )}
-            </Card>
-
-            {/* Payment Method (simple list like screenshot) */}
-            <Card className="p-3 md:p-6">
-              <h2 className="font-semibold text-base md:text-lg mb-3 md:mb-4">Select Payment Method</h2>
-
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
-                {isRazorpayUpiAvailable && (
-                  <Label
-                    htmlFor="razorpay_upi"
-                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                      paymentMethod === 'razorpay_upi' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <RadioGroupItem value="razorpay_upi" id="razorpay_upi" />
-                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                      <span className="text-xs font-semibold">RZP</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{paymentSettings?.razorpay_upi_display_name || 'UPI (Pay & Upload UTR)'}</p>
-                      <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_upi_display_description || 'Pay and upload UTR'}</p>
-                    </div>
-                  </Label>
-                )}
-
-                {isUpiAvailable && (
-                  <Label
-                    htmlFor="upi"
-                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                      paymentMethod === 'upi' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <RadioGroupItem value="upi" id="upi" />
-                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                      <QrCode className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{paymentSettings?.upi_display_name || 'Pay via UPI'}</p>
-                      <p className="text-xs text-muted-foreground">{paymentSettings?.upi_display_description || 'Scan QR code or pay to UPI ID'}</p>
-                    </div>
-                  </Label>
-                )}
-
-                {isCodAvailable && (
-                  <Label
-                    htmlFor="cod"
-                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                      paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <RadioGroupItem value="cod" id="cod" />
-                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                      <Banknote className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</p>
-                      <p className="text-xs text-muted-foreground">{paymentSettings?.cod_display_description || 'Pay when you receive your order'}</p>
-                    </div>
-                  </Label>
-                )}
-
-                {/* Keep other gateways available, but in the same simple UI */}
-                {isRazorpayAvailable && (
-                  <Label
-                    htmlFor="razorpay"
-                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                      paymentMethod === 'razorpay' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <RadioGroupItem value="razorpay" id="razorpay" />
-                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                      <CreditCard className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{paymentSettings?.razorpay_display_name || 'Card/UPI via Razorpay'}</p>
-                      <p className="text-xs text-muted-foreground">{paymentSettings?.razorpay_display_description || 'Pay securely using Razorpay'}</p>
-                    </div>
-                  </Label>
-                )}
-
-                {isPaytmAvailable && (
-                  <Label
-                    htmlFor="paytm"
-                    className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
-                      paymentMethod === 'paytm' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <RadioGroupItem value="paytm" id="paytm" />
-                    <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                      <Wallet className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{paymentSettings?.paytm_display_name || 'Paytm'}</p>
-                      <p className="text-xs text-muted-foreground">{paymentSettings?.paytm_display_description || 'UPI, Wallet, Net Banking'}</p>
-                    </div>
-                  </Label>
-                )}
-              </RadioGroup>
-
-              {!isCodAvailable && !isRazorpayAvailable && !isUpiAvailable && !isPaytmAvailable && !isCashfreeAvailable && !isBharatPayAvailable && !isPayYouAvailable && !isPhonePeAvailable && (
-                <p className="text-xs md:text-sm text-destructive mt-3 md:mt-4">
-                  ⚠️ No payment methods available. Please contact support.
-                </p>
-              )}
-
-              {!isCodAvailable && (isRazorpayAvailable || isUpiAvailable || isPaytmAvailable || isCashfreeAvailable || isBharatPayAvailable || isPayYouAvailable || isPhonePeAvailable) && (
-                <div className="mt-3 md:mt-4 p-2 md:p-3 bg-secondary/50 border border-border rounded-lg">
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    COD not available for {!isGlobalCodEnabled ? 'this store' : 'some items'}.
-                  </p>
-                </div>
-              )}
-            </Card>
-
-            {/* Order Summary (match screenshot: not fixed) */}
-            <Card className="p-3 md:p-6">
-              <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
-
-              <div className="space-y-3">
-                {checkoutItems.slice(0, 2).map((item, index) => (
-                  <div key={isBuyNowMode ? `buynow-${index}` : (item as any).id} className="flex gap-3">
-                    <div className="w-12 h-12 rounded bg-secondary overflow-hidden flex-shrink-0">
-                      <img
-                        src={item.product?.images?.[0] || 'https://via.placeholder.com/48'}
-                        alt={item.product?.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.product?.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Qty: {item.quantity}
-                        {item.size && ` • Size: ${item.size}`}
-                        {item.color && ` • ${item.color}`}
-                      </p>
-                    </div>
-                    <p className="text-sm font-medium">
-                      ₹{((item.product?.sale_price || item.product?.price || 0) * item.quantity).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
+              <span className="text-xs mt-1 text-muted-foreground">Review</span>
+            </div>
+            
+            {/* Line */}
+            <div className="w-32 h-0.5 bg-emerald-500 mx-1" />
+            
+            {/* Step 2 - Payment (current) */}
+            <div className="flex flex-col items-center">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-semibold">
+                2
               </div>
-
-              <Separator className="my-4" />
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>₹{checkoutTotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
-                </div>
-                {discountAmount > 0 && (
-                  <div className="flex justify-between text-primary">
-                    <span className="flex items-center gap-1">
-                      <Ticket className="h-3 w-3" />
-                      Discount ({appliedCoupon?.code})
-                    </span>
-                    <span>-₹{discountAmount.toLocaleString()}</span>
-                  </div>
-                )}
-              </div>
-
-              <Separator className="my-4" />
-
-              <div className="flex justify-between font-semibold text-lg mb-4">
-                <span>Total</span>
-                <div className="text-right">
-                  {discountAmount > 0 && (
-                    <span className="text-sm line-through text-muted-foreground mr-2">
-                      ₹{subtotalWithShipping.toLocaleString()}
-                    </span>
-                  )}
-                  <span>₹{finalTotal.toLocaleString()}</span>
-                </div>
-              </div>
-
-              <Button
-                onClick={handlePayment}
-                className="w-full"
-                size="lg"
-                disabled={loading || !paymentMethod}
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {paymentMethod === 'cod'
-                  ? 'Place Order'
-                  : paymentMethod === 'upi'
-                    ? `Pay with ${paymentSettings?.upi_display_name || 'UPI'}`
-                    : paymentMethod === 'razorpay_upi'
-                      ? `Pay with ${paymentSettings?.razorpay_upi_display_name || 'UPI'}`
-                      : paymentMethod === 'razorpay'
-                        ? 'Pay with Razorpay'
-                        : 'Pay Now'}
-              </Button>
-            </Card>
+              <span className="text-xs mt-1 text-foreground font-medium">Payment</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* UPI Payment Dialog - Advanced */}
+      {/* Discount Banner with zigzag */}
+      {totalDiscount > 0 && (
+        <div className="relative">
+          <div className="bg-emerald-100 dark:bg-emerald-900/30 py-3 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold text-lg">₹{totalDiscount} OFF</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-sm">on this order</span>
+            </div>
+            <div className="flex items-center gap-1 bg-white/80 dark:bg-black/30 rounded-full px-3 py-1">
+              <span className="text-orange-500">⏰</span>
+              <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
+                {formatTime(timeLeft.hours)}h : {formatTime(timeLeft.minutes)}m : {formatTime(timeLeft.seconds)}s
+              </span>
+            </div>
+          </div>
+          {/* Zigzag border */}
+          <div className="absolute bottom-0 left-0 right-0 h-3 overflow-hidden translate-y-full">
+            <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="w-full h-full">
+              <path 
+                d="M0,10 L5,0 L10,10 L15,0 L20,10 L25,0 L30,10 L35,0 L40,10 L45,0 L50,10 L55,0 L60,10 L65,0 L70,10 L75,0 L80,10 L85,0 L90,10 L95,0 L100,10" 
+                fill="rgb(209 250 229)" 
+                className="dark:fill-emerald-900/30"
+              />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="px-4 pt-6 space-y-4">
+        {/* Payment Options */}
+        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
+          {/* COD Option */}
+          {isCodAvailable && (
+            <Label
+              htmlFor="cod"
+              className={`flex items-center gap-4 rounded-xl border-2 p-4 cursor-pointer transition-all ${
+                paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+            >
+              <div className="flex items-center gap-3 border-r pr-4">
+                <span className="text-lg font-bold">₹{codPrice.toLocaleString()}</span>
+              </div>
+              <div className="flex-1 flex items-center gap-3">
+                <span className="font-medium">{paymentSettings?.cod_display_name || 'Cash on Delivery'}</span>
+                <span className="text-xl">💰</span>
+              </div>
+              <RadioGroupItem value="cod" id="cod" />
+            </Label>
+          )}
+
+          {/* Online Payment Option */}
+          {isOnlineAvailable && (
+            <Label
+              htmlFor="online"
+              className={`relative flex flex-col rounded-xl border-2 cursor-pointer transition-all overflow-hidden ${
+                paymentMethod !== 'cod' ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+            >
+              <div className="flex items-center gap-4 p-4">
+                <div className="flex flex-col items-start border-r pr-4">
+                  {onlineSaving > 0 && (
+                    <span className="text-xs text-muted-foreground line-through">₹{onlineOriginalPrice.toLocaleString()}</span>
+                  )}
+                  <span className="text-lg font-bold text-emerald-600">₹{onlinePrice.toLocaleString()}</span>
+                  {onlineSaving > 0 && (
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                      Save ₹{onlineSaving}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 flex items-center gap-3">
+                  <span className="font-medium">Pay Online</span>
+                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">paytm</span>
+                </div>
+                <RadioGroupItem 
+                  value={paymentSettings?.razorpay_enabled ? 'razorpay' : paymentSettings?.upi_enabled ? 'upi' : paymentSettings?.razorpay_upi_enabled ? 'razorpay_upi' : 'paytm'} 
+                  id="online" 
+                />
+              </div>
+              
+              {/* Extra discount banner */}
+              <div className="bg-gradient-to-r from-emerald-100 to-emerald-50 dark:from-emerald-900/30 dark:to-emerald-800/20 px-4 py-2 flex items-center gap-2">
+                <span className="text-emerald-600">✨</span>
+                <span className="text-sm text-emerald-700 dark:text-emerald-400">Extra ₹10 OFF with UPI</span>
+              </div>
+            </Label>
+          )}
+        </RadioGroup>
+
+        {/* Reselling section */}
+        <div className="flex items-center justify-between py-4 border-t border-b bg-secondary/30 -mx-4 px-4">
+          <span className="font-medium">Reselling the order?</span>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </div>
+
+        {/* Price Details Collapsible */}
+        <Collapsible open={priceDetailsOpen} onOpenChange={setPriceDetailsOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full py-3">
+            <span className="font-semibold">Price Details ({checkoutItems.length} Item)</span>
+            {priceDetailsOpen ? (
+              <ChevronUp className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-3 pt-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Total Product Price</span>
+              <span>+ ₹{originalTotal.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-emerald-600 underline underline-offset-2 decoration-dashed">Total Discounts</span>
+              <span className="text-emerald-600">- ₹{totalDiscount.toLocaleString()}</span>
+            </div>
+            
+            <div className="border-t pt-3 flex justify-between font-semibold">
+              <span>Order Total</span>
+              <span>₹{finalTotal.toLocaleString()}</span>
+            </div>
+
+            {/* Discount celebration banner */}
+            {totalDiscount > 0 && (
+              <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-xl p-3 flex items-center gap-2 justify-center">
+                <span className="text-emerald-600">✨</span>
+                <span className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                  Yay! Your total discount is ₹{totalDiscount}
+                </span>
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Fixed Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t px-4 py-3 flex items-center justify-between z-50">
+        <div>
+          <p className="text-xl font-bold">₹{finalTotal.toLocaleString()}</p>
+          <button className="text-sm text-primary font-medium uppercase">View Price Details</button>
+        </div>
+        <Button
+          onClick={handlePayment}
+          disabled={loading || !paymentMethod}
+          className="bg-[#9b1d54] hover:bg-[#8a1a4b] text-white px-8 py-6 text-base font-semibold rounded-lg"
+        >
+          {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
+          Place Order
+        </Button>
+      </div>
+
+      {/* UPI Payment Dialog */}
       <Dialog open={showUpiDialog} onOpenChange={handleUpiDialogClose}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-2">
@@ -1132,7 +922,7 @@ export default function CheckoutPayment() {
               {paymentMethod === 'razorpay_upi' ? 'Razorpay UPI Payment' : 'Complete Your Payment'}
             </DialogTitle>
             <DialogDescription className="text-center">
-              {paymentMethod === 'razorpay_upi' ? 'Pay via Razorpay UPI & Enter TR ID' : 'Secure UPI Payment'} • Order ID: #{pendingOrderId?.slice(0, 8).toUpperCase()}
+              Order ID: #{pendingOrderId?.slice(0, 8).toUpperCase()}
             </DialogDescription>
           </DialogHeader>
           
@@ -1153,273 +943,79 @@ export default function CheckoutPayment() {
               <p className="text-sm font-semibold text-center flex items-center justify-center gap-2">
                 <Smartphone className="h-4 w-4" />
                 Pay using UPI App
-                <span className="text-xs font-normal text-muted-foreground">(Amount auto-filled)</span>
               </p>
               <div className="grid grid-cols-3 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-400 hover:shadow-md transition-all dark:hover:bg-purple-950/30"
-                  onClick={() => openUpiApp('phonepe')}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-sm">Pe</span>
-                  </div>
-                  <span className="text-xs font-medium">PhonePe</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-400 hover:shadow-md transition-all dark:hover:bg-blue-950/30"
-                  onClick={() => openUpiApp('paytm')}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-[9px]">Paytm</span>
-                  </div>
-                  <span className="text-xs font-medium">Paytm</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-green-50 hover:border-green-400 hover:shadow-md transition-all dark:hover:bg-green-950/30"
-                  onClick={() => openUpiApp('gpay')}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center shadow-lg overflow-hidden">
-                    <div className="w-full h-full bg-gradient-to-br from-blue-500 via-green-500 to-yellow-400 flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">G</span>
+                {['phonepe', 'paytm', 'gpay', 'bhim', 'amazon', 'any'].map((app) => (
+                  <Button
+                    key={app}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center gap-2 hover:shadow-md transition-all"
+                    onClick={() => openUpiApp(app)}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-xs capitalize">{app.slice(0, 2)}</span>
                     </div>
-                  </div>
-                  <span className="text-xs font-medium">GPay</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-indigo-50 hover:border-indigo-400 hover:shadow-md transition-all dark:hover:bg-indigo-950/30"
-                  onClick={() => openUpiApp('bhim')}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-800 to-indigo-900 flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-[9px]">BHIM</span>
-                  </div>
-                  <span className="text-xs font-medium">BHIM UPI</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-orange-50 hover:border-orange-400 hover:shadow-md transition-all dark:hover:bg-orange-950/30"
-                  onClick={() => openUpiApp('amazon')}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-xs">₹Pay</span>
-                  </div>
-                  <span className="text-xs font-medium">Amazon</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 hover:border-gray-400 hover:shadow-md transition-all dark:hover:bg-gray-800"
-                  onClick={() => openUpiApp('any')}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center shadow-lg">
-                    <Smartphone className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="text-xs font-medium">Other UPI</span>
-                </Button>
+                    <span className="text-xs font-medium capitalize">{app === 'gpay' ? 'GPay' : app}</span>
+                  </Button>
+                ))}
               </div>
             </div>
 
-            {/* Divider */}
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-dashed" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-3 text-muted-foreground font-medium">OR SCAN QR</span>
-              </div>
-            </div>
-
-            {/* QR Code Section */}
-            <div className="flex justify-center">
-              <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-gray-100 relative">
-                <img 
-                  src={generateUpiQR(paymentMethod === 'razorpay_upi')} 
-                  alt="UPI QR Code" 
-                  className="w-44 h-44 rounded-lg"
-                />
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
-                  Scan to Pay
-                </div>
-              </div>
-            </div>
-            
-            {/* UPI ID */}
-            <div className="bg-secondary/80 p-3 rounded-xl border">
-              <p className="text-xs text-muted-foreground text-center mb-2">
-                {paymentMethod === 'razorpay_upi' ? 'Razorpay UPI ID' : 'UPI ID'}
-              </p>
-              <div className="flex items-center gap-2 bg-background p-2 rounded-lg">
-                <span className="flex-1 font-mono text-sm text-center font-medium truncate">
-                  {getCurrentUpiId()}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0"
-                  onClick={copyUpiId}
-                >
-                  {upiCopied ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-dashed" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-3 text-muted-foreground font-medium">AFTER PAYMENT</span>
-              </div>
-            </div>
-
-            {/* UTR/TR ID Input Section */}
-            <div className={`space-y-3 p-4 rounded-xl border ${
-              paymentMethod === 'razorpay_upi' 
-                ? 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-blue-200 dark:border-blue-800'
-                : 'bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20'
-            }`}>
-              <div className="flex items-center justify-center gap-2">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  paymentMethod === 'razorpay_upi' ? 'bg-blue-200 dark:bg-blue-800' : 'bg-primary/20'
-                }`}>
-                  <Check className={`h-3 w-3 ${paymentMethod === 'razorpay_upi' ? 'text-blue-600' : 'text-primary'}`} />
-                </div>
-                <p className="text-sm font-semibold">
-                  {paymentMethod === 'razorpay_upi' ? 'Enter TR ID for Quick Verification' : 'Enter UTR for Quick Verification'}
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Input
-                  placeholder={paymentMethod === 'razorpay_upi' ? 'Enter TR ID (e.g., RZCo8ouCwkJJI7qrv2)' : 'Enter 12-digit UTR number'}
-                  value={utrNumber}
-                  onChange={(e) => {
-                    if (paymentMethod === 'razorpay_upi') {
-                      // Allow alphanumeric for TR ID
-                      setUtrNumber(e.target.value.slice(0, 20));
-                    } else {
-                      // Only digits for UTR
-                      setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12));
-                    }
-                  }}
-                  className="font-mono text-center text-lg h-12 tracking-wider border-2 focus:border-primary"
-                  maxLength={paymentMethod === 'razorpay_upi' ? 20 : 12}
-                />
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <span className={`w-2 h-2 rounded-full ${utrNumber.length >= (paymentMethod === 'razorpay_upi' ? 8 : 10) ? 'bg-green-500' : 'bg-gray-300'}`} />
-                    {utrNumber.length} characters
-                  </span>
-                  <span>{paymentMethod === 'razorpay_upi' ? 'Find TR ID in Razorpay' : 'Find UTR in payment history'}</span>
-                </div>
-              </div>
-              
-              <div className="bg-background/80 p-3 rounded-lg border text-xs space-y-1">
-                <p className="font-medium text-center">
-                  {paymentMethod === 'razorpay_upi' ? '📱 Where to find TR ID?' : '📱 Where to find UTR?'}
-                </p>
-                <ul className="text-muted-foreground space-y-0.5">
-                  {paymentMethod === 'razorpay_upi' ? (
-                    <>
-                      <li>• Open your UPI app → Payment History</li>
-                      <li>• Find this transaction → Copy Transaction Reference</li>
-                      <li>• Razorpay TR ID starts with "RZC..."</li>
-                    </>
-                  ) : (
-                    <>
-                      <li>• Open your UPI app → Payment History</li>
-                      <li>• Find this transaction → Copy UTR/Reference ID</li>
-                      <li>• It's usually a 12-digit number</li>
-                    </>
-                  )}
-                </ul>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3 pt-2">
-              <Button 
-                onClick={() => confirmUpiPayment(true)} 
-                className={`w-full h-12 text-base font-semibold ${
-                  paymentMethod === 'razorpay_upi'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
-                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
-                }`} 
-                size="lg"
-                disabled={utrNumber.length < (paymentMethod === 'razorpay_upi' ? 8 : 10)}
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                {paymentMethod === 'razorpay_upi' ? 'Submit TR ID & Confirm Order' : 'Submit UTR & Confirm Order'}
+            {/* UPI ID Copy */}
+            <div className="flex items-center gap-2 p-3 bg-secondary rounded-lg">
+              <span className="text-sm flex-1 truncate">{getUpiId()}</span>
+              <Button variant="ghost" size="sm" onClick={copyUpiId}>
+                {upiCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
               </Button>
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-background px-2 text-muted-foreground">Don't have UTR?</span>
-                </div>
-              </div>
-              
-              <Button 
-                onClick={() => confirmUpiPayment(false)} 
-                variant="outline" 
-                className="w-full"
-              >
-                I've Paid, Verify Later
-              </Button>
-              
-              <p className="text-[10px] text-muted-foreground text-center">
-                ⚠️ Orders without UTR may take longer to verify (up to 24 hours)
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Payment Success Dialog */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md">
-          <div className="flex flex-col items-center py-6 space-y-6">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center animate-scale-in">
-                <CheckCircle className="h-12 w-12 text-green-600 animate-[bounce_1s_ease-in-out_1]" />
-              </div>
-              <div className="absolute inset-0 animate-fade-in">
-                <div className="absolute -top-2 left-1/2 w-2 h-2 rounded-full bg-yellow-400 animate-[ping_1s_ease-in-out_1]" />
-                <div className="absolute top-1/4 -right-2 w-2 h-2 rounded-full bg-blue-400 animate-[ping_1.2s_ease-in-out_1]" />
-                <div className="absolute -bottom-1 left-1/4 w-2 h-2 rounded-full bg-pink-400 animate-[ping_1.4s_ease-in-out_1]" />
-                <div className="absolute top-1/3 -left-2 w-2 h-2 rounded-full bg-purple-400 animate-[ping_1.6s_ease-in-out_1]" />
-              </div>
             </div>
 
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-green-600">Payment Received!</h2>
-              <p className="text-muted-foreground">
-                Your order has been placed successfully.
-                {utrNumber ? ' Payment will be verified shortly.' : ' We will verify your payment soon.'}
+            {/* UTR Input */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                {paymentMethod === 'razorpay_upi' ? 'Enter 20-digit TR ID' : 'Enter 12-digit UTR Number'}
+              </Label>
+              <Input
+                value={utrNumber}
+                onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, paymentMethod === 'razorpay_upi' ? 20 : 12))}
+                placeholder={paymentMethod === 'razorpay_upi' ? 'Enter TR ID' : 'Enter UTR Number'}
+                className="text-center text-lg tracking-widest"
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                {utrNumber.length}/{paymentMethod === 'razorpay_upi' ? 20 : 12} digits
               </p>
             </div>
 
-            <Button onClick={handleSuccessClose} className="w-full" size="lg">
-              View My Orders
+            <Button 
+              onClick={handleUtrSubmit} 
+              className="w-full" 
+              disabled={loading || utrNumber.length !== (paymentMethod === 'razorpay_upi' ? 20 : 12)}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Submit Payment
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </Layout>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Payment Submitted!</DialogTitle>
+            <DialogDescription className="text-center">
+              Your payment is being verified. You'll receive confirmation soon.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <Check className="h-8 w-8 text-green-600" />
+            </div>
+          </div>
+          <Button onClick={() => navigate('/orders')} className="w-full">
+            View My Orders
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
