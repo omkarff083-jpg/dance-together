@@ -539,7 +539,8 @@ export default function CheckoutPayment() {
         }
         sessionStorage.removeItem('buyNowItem');
         sessionStorage.removeItem('checkoutAddress');
-        navigate(`/order-confirmation/${order.id}`);
+        // OrderConfirmation page expects query param (?orderId=...), not a path param.
+        navigate(`/order-confirmation?orderId=${order.id}`);
       } else if (paymentMethod === 'upi' || paymentMethod === 'razorpay_upi') {
         const order = await createOrder(paymentMethod, undefined, 'awaiting_payment');
         setPendingOrderId(order.id);
@@ -598,7 +599,8 @@ export default function CheckoutPayment() {
               }
               sessionStorage.removeItem('buyNowItem');
               sessionStorage.removeItem('checkoutAddress');
-              navigate(`/order-confirmation/${order.id}`);
+              // OrderConfirmation page expects query param (?orderId=...), not a path param.
+              navigate(`/order-confirmation?orderId=${order.id}`);
             } else {
               toast.error('Payment verification failed');
             }
@@ -782,6 +784,61 @@ export default function CheckoutPayment() {
 
       {/* Main Content */}
       <div className="px-4 pt-6 space-y-4">
+        {/* Coupon Section */}
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Ticket className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-semibold text-sm">Apply Coupon</p>
+                <p className="text-xs text-muted-foreground">Save more on this order</p>
+              </div>
+            </div>
+
+            {appliedCoupon ? (
+              <button
+                type="button"
+                onClick={removeCoupon}
+                className="text-xs font-semibold text-primary underline underline-offset-2"
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <Input
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              placeholder="Enter coupon code"
+              className="h-11"
+              disabled={!!appliedCoupon}
+            />
+            <Button
+              type="button"
+              onClick={appliedCoupon ? removeCoupon : handleApplyCoupon}
+              disabled={couponLoading}
+              className="h-11 px-5"
+              variant={appliedCoupon ? 'outline' : 'default'}
+            >
+              {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : appliedCoupon ? 'Applied' : 'Apply'}
+            </Button>
+          </div>
+
+          {appliedCoupon && discountAmount > 0 ? (
+            <div className="mt-3 rounded-lg bg-secondary p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Coupon</span>
+                <span className="font-semibold">{appliedCoupon.code}</span>
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-muted-foreground">You saved</span>
+                <span className="font-semibold text-emerald-600">- ₹{discountAmount.toLocaleString()}</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         {/* Payment Options */}
         <div className="space-y-3">
           {/* COD Option */}
