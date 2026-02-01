@@ -100,69 +100,72 @@ export default function Home() {
   };
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} className="min-h-screen bg-background pb-20 md:pb-0">
-      {/* Header */}
-      <HomeHeader />
+    <>
+      {/* NOTE: PullToRefresh uses a transform translateY() wrapper.
+          Any `position: fixed` element inside a transformed ancestor can "jump" on mobile.
+          So keep fixed UI (CompareBar / MobileBottomNav) OUTSIDE PullToRefresh. */}
+      <PullToRefresh onRefresh={handleRefresh} className="min-h-screen bg-background pb-20 md:pb-0">
+        {/* Header */}
+        <HomeHeader />
 
-      {/* Categories Carousel */}
-      <div className="py-4 bg-background">
-        <div className="overflow-x-auto scrollbar-hide">
-          <div className="flex gap-4 px-4 pb-2">
-            {categories.map((category) => (
-              <CategoryCircle key={category.id} category={category} />
-            ))}
+        {/* Categories Carousel */}
+        <div className="py-4 bg-background">
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex gap-4 px-4 pb-2">
+              {categories.map((category) => (
+                <CategoryCircle key={category.id} category={category} />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Recently Viewed Section */}
-      <RecentlyViewedSection 
-        products={recentlyViewed} 
-        onClear={clearRecentlyViewed} 
-      />
+        {/* Recently Viewed Section */}
+        <RecentlyViewedSection 
+          products={recentlyViewed} 
+          onClear={clearRecentlyViewed} 
+        />
 
-      {/* Filter Bar */}
-      <FilterBar onSortChange={handleSortChange} />
+        {/* Filter Bar */}
+        <FilterBar onSortChange={handleSortChange} />
 
-      {/* Products Grid */}
-      <div className="p-3">
-        {loading ? (
-          <ProductGridSkeleton count={8} />
-        ) : products.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {products.map((product) => (
-              <MeeshoProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Grid2X2 className="h-16 w-16 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No products found</h3>
-            <p className="text-muted-foreground text-sm">
-              Check back later for new arrivals
-            </p>
+        {/* Products Grid */}
+        <div className="p-3">
+          {loading ? (
+            <ProductGridSkeleton count={8} />
+          ) : products.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {products.map((product) => (
+                <MeeshoProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Grid2X2 className="h-16 w-16 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No products found</h3>
+              <p className="text-muted-foreground text-sm">
+                Check back later for new arrivals
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Load More Section */}
+        {products.length > 0 && (
+          <div className="px-4 pb-6">
+            <Link 
+              to="/products" 
+              className="flex items-center justify-center gap-2 w-full py-3 bg-secondary hover:bg-secondary/80 rounded-lg text-foreground font-medium transition-colors"
+            >
+              View All Products
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
         )}
-      </div>
+      </PullToRefresh>
 
-      {/* Load More Section */}
-      {products.length > 0 && (
-        <div className="px-4 pb-6">
-          <Link 
-            to="/products" 
-            className="flex items-center justify-center gap-2 w-full py-3 bg-secondary hover:bg-secondary/80 rounded-lg text-foreground font-medium transition-colors"
-          >
-            View All Products
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
-      )}
-
-      {/* Compare Bar */}
+      {/* Fixed UI */}
       <CompareBar />
-
-      {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
-    </PullToRefresh>
+    </>
   );
 }
